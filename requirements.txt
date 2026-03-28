@@ -1,0 +1,27 @@
+# AI / Brain
+google-generativeai>=0.5.0
+
+# Voice (ElevenLabs STT/TTS)
+elevenlabs>=1.2.0
+
+# Audio playback / capture
+pyaudio>=0.2.14
+sounddevice>=0.4.6
+soundfile>=0.12.0
+numpy>=1.26.0
+
+# Hardware / Serial communication
+pyserial>=3.5
+
+# Cloud (Vultr)
+requests>=2.31.0
+
+# Environment & configuration
+python-dotenv>=1.0.0
+
+# Scheduling (sub-agents)
+apscheduler>=3.10.4
+
+# Testing
+pytest>=8.0.0
+pytest-mock>=3.12.0
