@@ -43,10 +43,13 @@ export const SettingsPage = () => {
     try {
       let response;
       if (profileFile) {
-        const formPayload = new FormData();
-        formPayload.append('name', name);
-        formPayload.append('profile_picture', profileFile);
-        response = await updateUserProfile(user.id, formPayload);
+        const profileDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result?.toString() || '');
+          reader.onerror = () => reject(new Error('Failed to process image'));
+          reader.readAsDataURL(profileFile);
+        });
+        response = await updateUserProfile(user.id, { name, profile_picture: profileDataUrl });
       } else {
         response = await updateUserProfile(user.id, { name, profile_picture: profilePicture });
       }

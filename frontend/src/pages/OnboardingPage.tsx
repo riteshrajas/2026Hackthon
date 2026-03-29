@@ -121,21 +121,23 @@ export const OnboardingPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Build FormData payload for multer
-      const formPayload = new FormData();
-      formPayload.append('name', formData.name);
-      formPayload.append('email', formData.email);
-      formPayload.append('password', formData.password);
-      formPayload.append('neighborhood_tag', formData.neighborhood_tag);        
-      formPayload.append('country', formData.country);
+      let profilePicture = '';
       if (croppedBlob) {
-        formPayload.append('profile_picture', croppedBlob, 'profile.jpg');      
+        profilePicture = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result?.toString() || '');
+          reader.onerror = () => reject(new Error('Failed to process image'));
+          reader.readAsDataURL(croppedBlob);
+        });
       }
 
-      const response = await api.post('/auth/register', formPayload, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await api.post('/auth/register', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        neighborhood_tag: formData.neighborhood_tag,
+        country: formData.country,
+        profile_picture: profilePicture
       });
       login(response.data.token, response.data.user);
       navigate('/feed');
