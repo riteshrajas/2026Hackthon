@@ -54,19 +54,8 @@ const awardEcoCredits = async (userId, actionType) => {
 };
 
 const getUnderdogNeighborhood = async () => {
-  const neighborhoods = await NeighborhoodPerformance.find();
-  if (neighborhoods.length === 0) return null;
-  
-  let minPoints = Infinity;
-  let underdog = null;
-
-  for (const n of neighborhoods) {
-    if (n.total_points < minPoints) {
-      minPoints = n.total_points;
-      underdog = n.tag;
-    }
-  }
-  return underdog;
+  const underdog = await NeighborhoodPerformance.findOne().sort({ total_points: 1 });
+  return underdog ? underdog.tag : null;
 };
 
 const resetWeeklyPoints = async () => {
