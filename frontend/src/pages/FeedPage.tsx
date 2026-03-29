@@ -8,6 +8,7 @@ import {
   getComments,
   getPosts,
   toggleCommentLike,
+  getAISuggestions,
   getPendingRequests,
   respondToRequest,
   getActiveNinjas,
@@ -32,6 +33,16 @@ export const FeedPage = () => {
   const [activeNinjas, setActiveNinjas] = useState<any[]>([]);
   const [eventPosts, setEventPosts] = useState<any[]>([]);
   const [communityLoading, setCommunityLoading] = useState(true);
+  const [aiAdvisory, setAiAdvisory] = useState('');
+  const [aiAdvisoryLoading, setAiAdvisoryLoading] = useState(false);
+  const [aiAdvisoryError, setAiAdvisoryError] = useState('');
+  const [weatherSnapshot, setWeatherSnapshot] = useState<any>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState('');
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [geoStatus, setGeoStatus] = useState<'idle' | 'prompt' | 'granted' | 'denied'>('idle');
   const { user } = useAuth();
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const lastRefreshAtRef = useRef(0);
@@ -330,6 +341,183 @@ export const FeedPage = () => {
     };
   };
 
+  const getWeatherLabel = (code: number) => {
+    if (code === 0) return 'Clear skies';
+    if (code === 1 || code === 2) return 'Mostly sunny';
+    if (code === 3) return 'Overcast';
+    if (code >= 45 && code <= 48) return 'Foggy';
+    if (code >= 51 && code <= 67) return 'Rain showers';
+    if (code >= 71 && code <= 77) return 'Snowy';
+    if (code >= 80 && code <= 82) return 'Heavy rain';
+    if (code >= 95) return 'Thunderstorms';
+    return 'Mixed conditions';
+  };
+
+  const buildWeatherAdvice = (snapshot: any) => {
+    if (!snapshot) return '';
+    const { temperature, precipitation, wind } = snapshot;
+    if (precipitation >= 3) {
+      return 'Rain is active — lean into indoor actions like energy checks or educational modules.';
+    }
+    if (wind >= 10) {
+      return 'Windy out — good day for indoor cleanups or quick eco-learning.';
+    }
+    if (temperature >= 30) {
+      return 'Hot day — hydrate and pick low-intensity outdoor tasks.';
+    }
+    if (temperature <= 5) {
+      return 'Chilly outside — consider indoor actions to keep momentum.';
+    }
+    return 'Looks mild — great time for outdoor eco actions or community cleanups.';
+  };
+
+  const fetchWeatherForCoords = async (lat: number, lon: number, label?: string) => {
+    const forecastResponse = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weathercode,wind_speed_10m`
+    );
+    if (!forecastResponse.ok) {
+      throw new Error('Failed to fetch weather');
+    }
+    const forecastData = await forecastResponse.json();
+    const current = forecastData?.current || {};
+    setWeatherSnapshot({
+      name: label || 'Your area',
+      temperature: current.temperature_2m,
+      precipitation: current.precipitation,
+      wind: current.wind_speed_10m,
+      code: current.weathercode
+    });
+  };
+
+  const requestLocation = (auto = false) => {
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation is not supported in this browser.');
+      return;
+    }
+
+    setGeoLoading(!auto);
+    setGeoError('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextCoords = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
+        };
+        setCoords(nextCoords);
+        setGeoStatus('granted');
+        setGeoLoading(false);
+        setGeoError('');
+      },
+      () => {
+        setGeoStatus('denied');
+        if (!auto) {
+          setGeoError('Location permission denied.');
+        }
+        setGeoLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleUseLocation = () => {
+    setGeoStatus('prompt');
+    requestLocation();
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    setAiAdvisoryLoading(true);
+    setAiAdvisoryError('');
+    getAISuggestions(user.id)
+      .then((data) => setAiAdvisory(data?.text || data?.message || ''))
+      .catch((error) => {
+        console.error('Failed to load AI advisory', error);
+        setAiAdvisoryError('AI advisory is unavailable right now.');
+      })
+      .finally(() => setAiAdvisoryLoading(false));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!navigator.geolocation || !('permissions' in navigator)) return;
+
+    let permissionStatus: PermissionStatus | null = null;
+    navigator.permissions
+      .query({ name: 'geolocation' as PermissionName })
+      .then((status) => {
+        permissionStatus = status;
+        const nextState = status.state === 'granted'
+          ? 'granted'
+          : status.state === 'denied'
+            ? 'denied'
+            : 'idle';
+        setGeoStatus(nextState);
+        if (status.state === 'granted' && !coords) {
+          requestLocation(true);
+        }
+        status.onchange = () => {
+          const updated = status.state === 'granted'
+            ? 'granted'
+            : status.state === 'denied'
+              ? 'denied'
+              : 'idle';
+          setGeoStatus(updated);
+          if (status.state === 'granted') {
+            setGeoError('');
+            requestLocation(true);
+          }
+        };
+      })
+      .catch(() => {
+        // Permissions API not available; rely on manual prompt.
+      });
+
+    return () => {
+      if (permissionStatus) {
+        permissionStatus.onchange = null;
+      }
+    };
+  }, [coords]);
+
+  useEffect(() => {
+    if (!user?.neighborhood_tag && !coords) return;
+
+    const fetchWeather = async () => {
+      try {
+        setWeatherLoading(true);
+        setWeatherError('');
+
+        if (coords) {
+          await fetchWeatherForCoords(coords.lat, coords.lon, 'Your area');
+          return;
+        }
+
+        const locationQuery = encodeURIComponent(
+          [user?.neighborhood_tag, user?.country].filter(Boolean).join(', ')
+        );
+        const geoResponse = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${locationQuery}&count=1&language=en&format=json`
+        );
+        if (!geoResponse.ok) {
+          throw new Error('Failed to resolve location');
+        }
+        const geoData = await geoResponse.json();
+        const result = geoData?.results?.[0];
+        if (!result) {
+          throw new Error('Location not found');
+        }
+
+        await fetchWeatherForCoords(result.latitude, result.longitude, result.name);
+      } catch (error: any) {
+        setWeatherError(error?.message || 'Weather unavailable');
+      } finally {
+        setWeatherLoading(false);
+      }
+    };
+
+    fetchWeather();
+  }, [user?.neighborhood_tag, user?.country, coords]);
+
   return (
     <MainLayout>
       <Toaster position="bottom-center" />
@@ -339,6 +527,49 @@ export const FeedPage = () => {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
             <span className={`h-2 w-2 rounded-full ${isRefreshing ? 'bg-primary animate-pulse' : 'bg-surface-container-high'}`} />
             {isRefreshing ? 'Refreshing feed' : 'Pull to refresh'}
+          </div>
+          <div className="bg-surface-container-lowest rounded-2xl border border-surface-container-low p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold tracking-wider text-on-surface-variant">WEATHER ADVISORY</p>
+                <h3 className="font-headline font-bold text-lg">Today in your neighborhood</h3>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary-container text-on-primary-container">Eco-AI</span>
+            </div>
+            {weatherLoading ? (
+              <p className="text-sm text-on-surface-variant">Loading local weather...</p>
+            ) : weatherError ? (
+              <p className="text-sm text-on-surface-variant">{weatherError}</p>
+            ) : weatherSnapshot ? (
+              <div className="flex flex-wrap items-center gap-4 text-sm text-on-surface">
+                <span className="font-semibold">{weatherSnapshot.name}</span>
+                <span>{getWeatherLabel(weatherSnapshot.code)} · {Math.round(weatherSnapshot.temperature)}°C</span>
+                <span>Rain {weatherSnapshot.precipitation}mm</span>
+                <span>Wind {Math.round(weatherSnapshot.wind)} km/h</span>
+              </div>
+            ) : null}
+            <p className="text-sm text-on-surface leading-relaxed">
+              {buildWeatherAdvice(weatherSnapshot) || 'Log a small action today to keep the momentum going.'}
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
+              <button
+                type="button"
+                onClick={handleUseLocation}
+                disabled={geoLoading || geoStatus === 'granted'}
+                className="px-3 py-1 rounded-full bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors disabled:opacity-60"
+              >
+                {geoLoading ? 'Detecting location...' : geoStatus === 'granted' ? 'Location enabled' : 'Use my location'}
+              </button>
+              {geoStatus === 'denied' && geoError && <span>{geoError}</span>}
+            </div>
+            {aiAdvisoryLoading ? (
+              <p className="text-xs text-on-surface-variant">Loading AI suggestion...</p>
+            ) : aiAdvisoryError ? (
+              <p className="text-xs text-on-surface-variant">{aiAdvisoryError}</p>
+            ) : (
+              <p className="text-xs text-on-surface-variant">AI says: {aiAdvisory || 'Keep your streak active with a quick eco-win.'}</p>
+            )}
+            <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Powered by Open-Meteo + Eco-Pulse AI</p>
           </div>
           {/* Share Input Box */}
           <div className="bg-surface-container-lowest rounded-lg p-6 flex items-center gap-4 transition-all duration-300">
@@ -580,6 +811,24 @@ export const FeedPage = () => {
 
         {/* Sidebar Column */}
         <aside className="xl:col-span-4 flex flex-col gap-8">
+          <section className="bg-surface-container-low rounded-lg p-6">
+            <h3 className="font-headline font-bold text-lg mb-4">Neighborhood summary</h3>
+            <div className="flex items-center justify-between text-sm text-on-surface">
+              <span>Active ninjas</span>
+              <span className="font-bold">{activeNinjas.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-on-surface mt-3">
+              <span>Upcoming events</span>
+              <span className="font-bold">{eventPosts.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-on-surface mt-3">
+              <span>Pending requests</span>
+              <span className="font-bold">{pendingRequests.length}</span>
+            </div>
+            <p className="text-xs text-on-surface-variant mt-4">
+              Pulse check for {user?.neighborhood_tag || 'your area'}. Keep momentum by logging one action today.
+            </p>
+          </section>
           {/* Pending Requests */}
           <section className="bg-surface-container-low rounded-lg p-6">
             <h3 className="font-headline font-bold text-lg mb-6 flex items-center justify-between">
@@ -658,7 +907,7 @@ export const FeedPage = () => {
             <a className="hover:text-primary transition-colors" href="#">Terms</a>
             <a className="hover:text-primary transition-colors" href="#">Eco-Guidelines</a>
             <a className="hover:text-primary transition-colors" href="#">Contact</a>
-            <span>© 2024 Eco-Ninjas</span>
+            <span>© 2026 Eco-Pulse</span>
           </div>
         </aside>
       </div>

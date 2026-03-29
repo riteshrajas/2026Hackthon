@@ -33,6 +33,10 @@ if (!process.env.JWT_SECRET && functionsConfig.env && functionsConfig.env.jwt_se
   process.env.JWT_SECRET = functionsConfig.env.jwt_secret;
 }
 
+if (!process.env.OPENWEATHER_API_KEY && functionsConfig.env && functionsConfig.env.openweather_api_key) {
+  process.env.OPENWEATHER_API_KEY = functionsConfig.env.openweather_api_key;
+}
+
 app.use(cors());
 app.use(express.json({ limit: '6mb' }));
 app.use(express.urlencoded({ limit: '6mb', extended: true }));
@@ -105,11 +109,18 @@ app.post('/admin/weekly-reset', async (req, res) => {
   }
 });
 
-const dbReady = connectDB();
+let dbReady;
+
+const getDbReady = () => {
+  if (!dbReady) {
+    dbReady = connectDB();
+  }
+  return dbReady;
+};
 
 const handleRequest = async (req, res) => {
   try {
-    await dbReady;
+    await getDbReady();
     return app(req, res);
   } catch (error) {
     console.error('Database initialization failed:', error);
@@ -120,7 +131,7 @@ const handleRequest = async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
-  dbReady
+  getDbReady()
     .then(() => {
       app.listen(PORT, () => {
         console.log(`ECO-PULSE Backend running on port ${PORT}`);
@@ -135,5 +146,5 @@ if (require.main === module) {
 module.exports = {
   api: functions.https.onRequest(handleRequest),
   app,
-  dbReady
+  getDbReady
 };

@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { useAuth } from '../context/AuthContext';
-import { getUserStats } from '../services/api';
+import { getAISuggestions, getUserStats } from '../services/api';
 
 export const ImpactPage = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<any>(null);
+  const [aiInsight, setAiInsight] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -13,10 +16,42 @@ export const ImpactPage = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    setAiLoading(true);
+    setAiError('');
+    getAISuggestions(user.id)
+      .then((data) => setAiInsight(data?.text || data?.message || ''))
+      .catch((error) => {
+        console.error(error);
+        setAiError('Unable to load AI insight right now.');
+      })
+      .finally(() => setAiLoading(false));
+  }, [user?.id]);
+
   return (
     <MainLayout>
       <div className="max-w-3xl mx-auto flex flex-col gap-8">
         <h1 className="text-3xl font-bold text-on-surface">Your Impact</h1>
+
+        <section className="bg-surface-container-lowest rounded-2xl border border-surface-container-low p-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-xs font-semibold tracking-wider text-on-surface-variant">AI INSIGHT</p>
+              <h2 className="text-xl font-bold text-on-surface">Personalized momentum</h2>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary-container text-on-primary-container">Eco-AI</span>
+          </div>
+          {aiLoading ? (
+            <p className="text-sm text-on-surface-variant">Loading your insight...</p>
+          ) : aiError ? (
+            <p className="text-sm text-on-surface-variant">{aiError}</p>
+          ) : (
+            <p className="text-sm text-on-surface leading-relaxed">
+              {aiInsight || 'Log another action this week to lift your streak multiplier.'}
+            </p>
+          )}
+        </section>
 
         {stats ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

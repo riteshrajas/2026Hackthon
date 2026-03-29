@@ -183,3 +183,33 @@ export const getEventSignups = async (eventId: string) => {
   const response = await api.get(`/events/${eventId}/signups`);
   return response.data;
 };
+
+export const getDisasterAlerts = async (lat: number, lon: number, units: 'metric' | 'imperial' = 'metric') => {
+  const response = await api.get('/disaster/alerts', { params: { lat, lon, units } });
+  return response.data;
+};
+
+export const geocodeDisasterLocation = async (query: string) => {
+  const response = await api.get('/disaster/geocode', { params: { query } });
+  return response.data;
+};
+
+export const getDisasterUpdates = async (scope: 'county' | 'country' | 'global', scopeValue?: string) => {
+  const response = await api.get('/disaster/updates', {
+    params: { scope, scope_value: scopeValue }
+  });
+  return response.data;
+};
+
+export const createDisasterUpdate = async (payload: {
+  title: string;
+  description: string;
+  category: string;
+  location_name?: string;
+  contact_info?: string;
+  scope: 'county' | 'country' | 'global';
+  scope_value?: string;
+}) => {
+  const response = await api.post('/disaster/updates', payload);
+  return response.data;
+};

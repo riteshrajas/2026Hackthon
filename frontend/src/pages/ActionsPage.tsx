@@ -6,7 +6,8 @@ import {
     getActionHistory,
     getDailyChallenge,
     expandDailyChallenge,
-    completeDailyChallenge
+    completeDailyChallenge,
+    getAISuggestions
 } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -18,6 +19,9 @@ export const ActionsPage = () => {
     const [isCompleting, setIsCompleting] = useState(false);
     const [history, setHistory] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(true);
+    const [aiSuggestion, setAiSuggestion] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState('');
 
     const dailyPointsLabel = useMemo(() => {
         if (!dailyChallenge?.points_range) return '';
@@ -94,6 +98,19 @@ export const ActionsPage = () => {
             .finally(() => setHistoryLoading(false));
     }, []);
 
+    useEffect(() => {
+        if (!user?.id) return;
+        setAiLoading(true);
+        setAiError('');
+        getAISuggestions(user.id)
+            .then((data) => setAiSuggestion(data?.text || data?.message || ''))
+            .catch((error) => {
+                console.error(error);
+                setAiError('Unable to load AI guidance right now.');
+            })
+            .finally(() => setAiLoading(false));
+    }, [user?.id]);
+
     return (
         <MainLayout>
             <Toaster position="bottom-center" />
@@ -124,6 +141,25 @@ export const ActionsPage = () => {
                <path d="M12 2L3 7v10l9 5 9-5V7L12 2zm0 2.8l6.5 3.6-6.5 3.6-6.5-3.6L12 4.8zm-7.5 5.8l6.5 3.6v7.3l-6.5-3.6v-7.3zm8.5 10.9v-7.3l6.5-3.6v7.3l-6.5 3.6z"/>
             </svg>
           </div>
+        </section>
+
+        <section className="bg-surface-container-lowest border border-surface-container-low rounded-3xl p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-xs font-semibold tracking-wider text-on-surface-variant">AI PANEL</p>
+                    <h2 className="text-2xl font-bold text-on-surface">Next best action</h2>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary-container text-on-primary-container">Eco-AI</span>
+            </div>
+            {aiLoading ? (
+                <p className="text-sm text-on-surface-variant">Loading personalized suggestion...</p>
+            ) : aiError ? (
+                <p className="text-sm text-on-surface-variant">{aiError}</p>
+            ) : (
+                <p className="text-sm text-on-surface leading-relaxed">
+                    {aiSuggestion || 'Complete a quick action today to keep your streak active.'}
+                </p>
+            )}
         </section>
 
         {/* Action Cards Grid */}

@@ -73,6 +73,22 @@ const PostSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+const DisasterUpdateSchema = new mongoose.Schema({
+  update_id: { type: String, required: true, unique: true },
+  user_id: { type: String, required: true },
+  user_name: { type: String, required: true },
+  user_profile_picture: { type: String, default: '' },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  category: { type: String, default: 'alert' },
+  location_name: { type: String, default: '' },
+  contact_info: { type: String, default: '' },
+  status: { type: String, default: 'active' },
+  scope: { type: String, default: 'county' },
+  scope_value: { type: String, default: '' },
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
+
 const CommentSchema = new mongoose.Schema({
   comment_id: { type: String, required: true, unique: true },
   post_id: { type: String, required: true, index: true },
@@ -126,6 +142,7 @@ const User = mongoose.model('User', UserSchema);
 const ActionLog = mongoose.model('ActionLog', ActionLogSchema);
 const NeighborhoodPerformance = mongoose.model('NeighborhoodPerformance', NeighborhoodPerformanceSchema);
 const Post = mongoose.model('Post', PostSchema);
+const DisasterUpdate = mongoose.model('DisasterUpdate', DisasterUpdateSchema);
 const Comment = mongoose.model('Comment', CommentSchema);
 const Event = mongoose.model('Event', EventSchema);
 const EventSignup = mongoose.model('EventSignup', EventSignupSchema);
@@ -137,6 +154,7 @@ module.exports = {
   ActionLog,
   NeighborhoodPerformance,
   Post,
+  DisasterUpdate,
   Comment,
   Event,
   EventSignup,

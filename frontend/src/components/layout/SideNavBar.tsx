@@ -39,6 +39,9 @@ export const SideNavBar = () => {
         <Link to="/community" className={`${isActive('/community') ? 'bg-[#6effc1] text-[#006041]' : 'text-[#2b2f2e] dark:text-[#dfe4e1] hover:bg-[#dfe4e1] dark:hover:bg-emerald-800'} rounded-full mx-2 px-4 py-3 flex items-center gap-3 transition-all`}>
           <span className="material-symbols-outlined">group</span> Community
         </Link>
+        <Link to="/disaster-recovery" className={`${isActive('/disaster-recovery') ? 'bg-[#6effc1] text-[#006041]' : 'text-[#2b2f2e] dark:text-[#dfe4e1] hover:bg-[#dfe4e1] dark:hover:bg-emerald-800'} rounded-full mx-2 px-4 py-3 flex items-center gap-3 transition-all`}>
+          <span className="material-symbols-outlined">crisis_alert</span> Disaster Recovery
+        </Link>
         <Link to="/settings" className={`${isActive('/settings') ? 'bg-[#6effc1] text-[#006041]' : 'text-[#2b2f2e] dark:text-[#dfe4e1] hover:bg-[#dfe4e1] dark:hover:bg-emerald-800'} rounded-full mx-2 px-4 py-3 flex items-center gap-3 transition-all`}>
           <span className="material-symbols-outlined">settings</span> Settings
         </Link>

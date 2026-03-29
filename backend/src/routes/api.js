@@ -10,6 +10,7 @@ const postController = require('../controllers/postController');
 const commentController = require('../controllers/commentController');
 const eventController = require('../controllers/eventController');
 const communityController = require('../controllers/communityController');
+const disasterController = require('../controllers/disasterController');
 const { protect } = require('../utils/authMiddleware');
 const multer = require('multer');
 
@@ -60,5 +61,11 @@ router.post('/community/requests', protect, communityController.createRequest);
 router.post('/community/requests/:requestId/respond', protect, communityController.respondToRequest);
 router.get('/community/active', protect, communityController.getActiveNinjas);
 router.get('/community/counties', protect, communityController.getCounties);
+
+// Disaster Recovery
+router.get('/disaster/alerts', protect, disasterController.getAlerts);
+router.get('/disaster/geocode', protect, disasterController.geocodeLocation);
+router.get('/disaster/updates', protect, disasterController.listUpdates);
+router.post('/disaster/updates', protect, disasterController.createUpdate);
 
 module.exports = router;
