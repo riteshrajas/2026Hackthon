@@ -8,7 +8,7 @@ const ACTION_POINTS = {
   EDUCATIONAL: { min: 5, max: 15, co2: 0.5 }
 };
 
-const awardEcoCredits = async (userId, actionType) => {
+const awardEcoCredits = async (userId, actionType, options = {}) => {
   const user = await User.findOne({ user_id: userId });
   if (!user) throw new Error('User not found');
 
@@ -27,6 +27,10 @@ const awardEcoCredits = async (userId, actionType) => {
   // Apply Streak Multiplier
   points = Math.floor(points * user.streak_multiplier);
 
+  const rawBonus = Number.isFinite(options.bonusPoints) ? Math.max(0, options.bonusPoints) : 0;
+  const bonusPoints = Math.min(rawBonus, 75);
+  points += bonusPoints;
+
   // Update User
   user.current_points += points;
   user.total_co2_saved += config.co2;
@@ -37,8 +41,11 @@ const awardEcoCredits = async (userId, actionType) => {
   const log = new ActionLog({
     user_id: userId,
     action_type: actionType,
+    action_label: options.actionLabel || actionType,
     points_awarded: points,
-    co2_saved: config.co2
+    bonus_points: bonusPoints,
+    co2_saved: config.co2,
+    source: options.source || 'manual'
   });
   await log.save();
 
@@ -50,7 +57,7 @@ const awardEcoCredits = async (userId, actionType) => {
   neighborhood.total_points += points;
   await neighborhood.save();
 
-  return { points, co2: config.co2, newTotal: user.current_points };
+  return { points, bonus_points: bonusPoints, co2: config.co2, newTotal: user.current_points };
 };
 
 const getUnderdogNeighborhood = async () => {

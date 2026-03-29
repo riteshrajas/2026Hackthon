@@ -46,8 +46,11 @@ const UserSchema = new mongoose.Schema({
 const ActionLogSchema = new mongoose.Schema({
   user_id: { type: String, required: true },
   action_type: { type: String, required: true },
+  action_label: { type: String, default: '' },
   points_awarded: { type: Number, default: 0 },
+  bonus_points: { type: Number, default: 0 },
   co2_saved: { type: Number, default: 0 },
+  source: { type: String, default: 'manual' },
   timestamp: { type: Date, default: Date.now }
 }, { timestamps: true });
 
@@ -82,11 +85,51 @@ const CommentSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 }, { timestamps: true });
 
+const EventSchema = new mongoose.Schema({
+  event_id: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  start_time: { type: Date, required: true },
+  end_time: { type: Date },
+  location_name: { type: String, default: '' },
+  location_address: { type: String, default: '' },
+  scope: { type: String, default: 'county' },
+  scope_value: { type: String, default: '' },
+  capacity: { type: Number, default: null },
+  signup_count: { type: Number, default: 0 },
+  creator_id: { type: String, required: true },
+  creator_name: { type: String, required: true },
+  creator_profile_picture: { type: String, default: '' },
+  organization_name: { type: String, default: '' },
+  organization_url: { type: String, default: '' },
+  details_url: { type: String, default: '' },
+  image_url: { type: String, default: '' }
+}, { timestamps: true });
+
+const EventSignupSchema = new mongoose.Schema({
+  signup_id: { type: String, required: true, unique: true },
+  event_id: { type: String, required: true, index: true },
+  user_id: { type: String, required: true },
+  status: { type: String, default: 'going' }
+}, { timestamps: true });
+
+const FriendRequestSchema = new mongoose.Schema({
+  request_id: { type: String, required: true, unique: true },
+  from_user_id: { type: String, required: true },
+  from_user_name: { type: String, required: true },
+  from_user_profile_picture: { type: String, default: '' },
+  to_user_id: { type: String, required: true },
+  status: { type: String, default: 'pending' }
+}, { timestamps: true });
+
 const User = mongoose.model('User', UserSchema);
 const ActionLog = mongoose.model('ActionLog', ActionLogSchema);
 const NeighborhoodPerformance = mongoose.model('NeighborhoodPerformance', NeighborhoodPerformanceSchema);
 const Post = mongoose.model('Post', PostSchema);
 const Comment = mongoose.model('Comment', CommentSchema);
+const Event = mongoose.model('Event', EventSchema);
+const EventSignup = mongoose.model('EventSignup', EventSignupSchema);
+const FriendRequest = mongoose.model('FriendRequest', FriendRequestSchema);
 
 module.exports = {
   connectDB,
@@ -94,5 +137,8 @@ module.exports = {
   ActionLog,
   NeighborhoodPerformance,
   Post,
-  Comment
+  Comment,
+  Event,
+  EventSignup,
+  FriendRequest
 };

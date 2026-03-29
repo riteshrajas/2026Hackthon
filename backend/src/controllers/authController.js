@@ -8,7 +8,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_ecopulse_key';
 // Register User
 const register = async (req, res) => {
   try {
-    const { name, email, password, neighborhood_tag, profile_picture, country } = req.body;
+    const { name, email, password, neighborhood_tag, country } = req.body;
+    let profile_picture = req.body.profile_picture || '';
+    
+    if (req.file) {
+      const baseUrl = req.protocol + '://' + req.get('host');
+      profile_picture = `${baseUrl}/uploads/${req.file.filename}`;
+    }
 
     if (!name || !email || !password || !neighborhood_tag) {
       return res.status(400).json({ error: 'Name, email, password and neighborhood (county) are required' });

@@ -9,9 +9,23 @@ const authController = require('../controllers/authController');
 const postController = require('../controllers/postController');
 const commentController = require('../controllers/commentController');
 const { protect } = require('../utils/authMiddleware');
+const multer = require('multer');
+const path = require('path');
+
+// Multer config
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
 
 // Auth Routes
-router.post('/auth/register', authController.register);
+router.post('/auth/register', upload.single('profile_picture'), authController.register);
 router.post('/auth/login', authController.login);
 
 // Post Routes
