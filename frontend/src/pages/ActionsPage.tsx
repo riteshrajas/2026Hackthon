@@ -1,4 +1,4 @@
-import { TopAppBar } from '../components/layout/TopAppBar';
+import { MainLayout } from '../components/layout/MainLayout';
 import { useAuth } from '../context/AuthContext';
 import { logAction } from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
@@ -22,12 +22,11 @@ export const ActionsPage = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <TopAppBar />
-      <Toaster position="bottom-center" />
-      
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+    return (
+        <MainLayout>
+            <Toaster position="bottom-center" />
+
+            <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Hero Section */}
         <section className="bg-primary rounded-[2rem] p-10 text-white relative overflow-hidden">
           <div className="relative z-10 max-w-xl">
@@ -181,12 +180,12 @@ export const ActionsPage = () => {
                 </div>
             </div>
         </section>
-      </main>
-      
-      {/* Floating Action Button */}
-      <button className="fixed bottom-8 right-8 bg-primary text-white p-4 rounded-full shadow-xl hover:bg-primary-dim transition-transform hover:scale-105">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
-    </div>
+            </main>
+
+            {/* Floating Action Button */}
+            <button className="fixed bottom-8 right-8 bg-primary text-white p-4 rounded-full shadow-xl hover:bg-primary-dim transition-transform hover:scale-105">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+        </MainLayout>
   );
 };

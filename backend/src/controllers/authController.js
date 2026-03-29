@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_ecopulse_key';
 // Register User
 const register = async (req, res) => {
   try {
-    const { name, email, password, neighborhood_tag, profile_picture } = req.body;
+    const { name, email, password, neighborhood_tag, profile_picture, country } = req.body;
 
     if (!name || !email || !password || !neighborhood_tag) {
       return res.status(400).json({ error: 'Name, email, password and neighborhood (county) are required' });
@@ -28,10 +28,16 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       neighborhood_tag,
-      profile_picture: profile_picture || ''
+      profile_picture: profile_picture || '',
+      country: country || 'United States'
     });
 
     await user.save();
+
+    if (!user.country) {
+      user.country = 'United States';
+      await user.save();
+    }
 
     const token = jwt.sign({ user_id: user.user_id }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -43,7 +49,8 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         neighborhood_tag: user.neighborhood_tag,
-        profile_picture: user.profile_picture
+        profile_picture: user.profile_picture,
+        country: user.country
       }
     });
   } catch (error) {
@@ -81,6 +88,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         neighborhood_tag: user.neighborhood_tag,
+        country: user.country,
         profile_picture: user.profile_picture,
         squad_id: user.squad_id,
         current_points: user.current_points

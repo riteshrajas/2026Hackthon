@@ -46,13 +46,33 @@ export const getAISuggestions = async (userId: string) => {
   return response.data;
 };
 
-export const createPost = async (text: string, imageUrl?: string) => {
-  const response = await api.post('/posts', { text, image_url: imageUrl });
+export const createPost = async (content: string, imageUrl?: string) => {
+  const response = await api.post('/posts', { content, image_url: imageUrl });
   return response.data;
 };
 
 export const getPosts = async () => {
   const response = await api.get('/posts');
+  return response.data;
+};
+
+export const getComments = async (postId: string) => {
+  const response = await api.get(`/posts/${postId}/comments`);
+  return response.data;
+};
+
+export const createComment = async (postId: string, content: string) => {
+  const response = await api.post(`/posts/${postId}/comments`, { content });
+  return response.data;
+};
+
+export const deleteComment = async (postId: string, commentId: string) => {
+  const response = await api.delete(`/posts/${postId}/comments/${commentId}`);
+  return response.data;
+};
+
+export const toggleCommentLike = async (postId: string, commentId: string) => {
+  const response = await api.post(`/posts/${postId}/comments/${commentId}/like`);
   return response.data;
 };
 

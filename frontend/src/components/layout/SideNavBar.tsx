@@ -13,7 +13,7 @@ export const SideNavBar = () => {
   };
   
   return (
-    <aside className="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-[#f4f7f5] dark:bg-emerald-950 no-border flat pt-24 px-4 z-40 border-r border-[#d9e5df] dark:border-emerald-900/40">
+    <aside className="h-screen w-64 fixed left-0 top-0 hidden lg:flex flex-col bg-[#f4f7f5] dark:bg-emerald-950 no-border flat pt-8 px-4 z-40 border-r border-[#d9e5df] dark:border-emerald-900/40">
       <div className="mb-8 px-4">
         <h3 className="text-xl font-extrabold text-[#006948] dark:text-[#6effc1]">Eco-Pulse</h3>
         <p className="text-xs font-semibold text-on-surface-variant opacity-70">

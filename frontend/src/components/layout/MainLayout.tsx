@@ -6,10 +6,12 @@ import { BottomNavBar } from './BottomNavBar';
 export const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-surface text-on-surface">
-      <TopAppBar />
       <div className="max-w-screen-2xl mx-auto flex">
         <SideNavBar />
         <main className="flex-1 lg:ml-64 p-4 md:p-8 pb-24 lg:pb-8">
+          <div className="mb-6 flex w-full justify-end border-b border-surface-container-low/60 pb-4">
+            <TopAppBar />
+          </div>
           {children}
         </main>
       </div>

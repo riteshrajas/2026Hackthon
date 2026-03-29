@@ -5,6 +5,7 @@ interface User {
   name: string;
   email: string;
   neighborhood_tag: string;
+  country?: string;
   profile_picture?: string;
   current_points?: number;
 }

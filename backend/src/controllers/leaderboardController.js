@@ -12,6 +12,16 @@ const getLeaderboard = async (req, res) => {
       query = { neighborhood_tag: id };
     } else if (type === 'squad') {
       query = { squad_id: id };
+    } else if (type === 'country') {
+      if (id === 'United States') {
+        query = { $or: [{ country: id }, { country: { $exists: false } }, { country: '' }] };
+      } else {
+        query = { country: id };
+      }
+    } else if (type === 'global') {
+      query = {};
+    } else {
+      return res.status(400).json({ error: 'Invalid leaderboard type' });
     }
 
     const filteredUsers = await User.find(query).sort({ current_points: -1 }).select('-password');

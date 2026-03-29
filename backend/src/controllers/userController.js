@@ -3,7 +3,7 @@ const { User } = require('../models/db');
 const { v4: uuidv4 } = require('uuid');
 
 const createUser = async (req, res) => {
-  const { name, email, password, neighborhood_tag, squad_id } = req.body;
+  const { name, email, password, neighborhood_tag, squad_id, country } = req.body;
   if (!name || !neighborhood_tag || !email || !password) 
     return res.status(400).json({ error: 'Name, Email, Password, and Neighborhood Tag are required' });
 
@@ -19,6 +19,7 @@ const createUser = async (req, res) => {
       password, // In a real app, hash this or use authController instead
       neighborhood_tag,
       squad_id: squad_id || null,
+      country: country || 'United States',
       current_points: 0,
       total_co2_saved: 0,
       streak_multiplier: 1.0,
