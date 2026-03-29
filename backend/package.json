@@ -1,0 +1,32 @@
+{
+  "name": "2026hackthon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riteshrajas/2026Hackthon.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/riteshrajas/2026Hackthon/issues"
+  },
+  "homepage": "https://github.com/riteshrajas/2026Hackthon#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.1.1",
+    "mongodb-memory-server": "^11.0.1",
+    "mongoose": "^9.3.3",
+    "uuid": "^13.0.0"
+  }
+}
