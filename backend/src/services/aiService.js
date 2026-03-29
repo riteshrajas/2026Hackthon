@@ -1,6 +1,40 @@
 
-const generateEcoSuggestion = (user) => {
-  const { name, current_points, total_co2_saved, neighborhood_tag } = user;
+const { generateDynamicChallenge } = require('./geminiService');
+
+const generateEcoSuggestion = async (user) => {
+  const { name, current_points, total_co2_saved, neighborhood_tag } = user;     
+
+  if (process.env.GEMINI_API_KEY) {
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    
+    try {
+      const prompt = `You are a background curation and suggestion engine for an eco-friendly application.
+Given the user:
+- Name: ${name}
+- Points: ${current_points}
+- Total CO2 saved: ${total_co2_saved} kg
+- County: ${neighborhood_tag}
+
+Provide a short, motivating, single-sentence suggestion for an eco-action they could take today in ${neighborhood_tag}. Do not mention you are an AI.`;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return {
+        text: response.text().trim(),
+        voice_id: 'green-sentinel-v1',
+        model_id: 'eleven_multilingual_v2',
+        user_context: {
+          points: current_points,
+          co2: total_co2_saved,
+          location: neighborhood_tag
+        }
+      };
+    } catch (error) {
+      console.error('Error generating eco suggestion from Gemini:', error);
+    }
+  }
   
   // Real logic for mock suggestions
   let suggestion = `Hey ${name}! `;
@@ -69,7 +103,7 @@ const getDailyChallenge = (date = new Date()) => {
   };
 };
 
-const expandDailyChallenge = (challenge) => {
+const expandDailyChallenge = async (challenge, user) => {
   const bonusByType = {
     VERIFIED: { min: 15, max: 45 },
     GRID: { min: 10, max: 30 },
@@ -78,9 +112,20 @@ const expandDailyChallenge = (challenge) => {
   const bonusConfig = bonusByType[challenge.action_type] || bonusByType.EDUCATIONAL;
   const bonusPoints = Math.floor(Math.random() * (bonusConfig.max - bonusConfig.min + 1)) + bonusConfig.min;
 
+  if (user && process.env.GEMINI_API_KEY) {
+    const aiTwist = await generateDynamicChallenge(challenge, user);
+    if (aiTwist) {
+      return {
+        expanded_title: `Bonus Challenge: ${challenge.title}`,
+        expanded_description: aiTwist,
+        bonus_points: bonusPoints
+      };
+    }
+  }
+
   return {
-    expanded_title: `Gemini Boost: ${challenge.title}`,
-    expanded_description: `${challenge.description} Gemini suggests adding a photo or short note describing your impact for bonus points.`,
+    expanded_title: `Bonus Challenge: ${challenge.title}`,
+    expanded_description: `${challenge.description} Add a photo or short note describing your impact for bonus points.`,
     bonus_points: bonusPoints
   };
 };

@@ -1,5 +1,6 @@
-const { Post, User } = require('../models/db');
+const { Post, User, ActionLog } = require('../models/db');
 const { v4: uuidv4 } = require('uuid');
+const { curateFeedWithGemini } = require('../services/geminiService');
 
 const createPost = async (req, res) => {
   try {
@@ -44,13 +45,38 @@ const getPosts = async (req, res) => {
         return res.json([]);
       }
 
-      const posts = await Post.find({ user_id: { $in: userIds } })
+      let posts = await Post.find({ user_id: { $in: userIds } })
         .sort({ timestamp: -1 })
+        .limit(20)
         .lean();
+
+      if (req.userAuth && req.userAuth.user_id) {
+        const currentUser = await User.findOne({ user_id: req.userAuth.user_id });
+        if (currentUser) {
+          const recentActions = await ActionLog.find({ user_id: currentUser.user_id })
+            .sort({ timestamp: -1 })
+            .limit(10)
+            .lean();
+          posts = await curateFeedWithGemini(currentUser, recentActions, posts);
+        }
+      }
+
       return res.json(posts);
     }
 
-    const posts = await Post.find().sort({ timestamp: -1 }).lean();
+    let posts = await Post.find().sort({ timestamp: -1 }).limit(20).lean();
+    
+    if (req.userAuth && req.userAuth.user_id) {
+      const currentUser = await User.findOne({ user_id: req.userAuth.user_id });
+      if (currentUser) {
+        const recentActions = await ActionLog.find({ user_id: currentUser.user_id })
+          .sort({ timestamp: -1 })
+          .limit(10)
+          .lean();
+        posts = await curateFeedWithGemini(currentUser, recentActions, posts);
+      }
+    }
+
     return res.json(posts);
   } catch (error) {
     console.error('Get posts error:', error);

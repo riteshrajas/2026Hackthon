@@ -50,12 +50,13 @@ const getDaily = async (req, res) => {
 const expandDaily = async (req, res) => {
   const { challenge_id } = req.body;
   const challenge = getDailyChallenge();
+  const user = req.user || (req.userAuth ? { name: "User", neighborhood_tag: "your area" } : null);
 
   if (challenge_id && challenge_id !== challenge.id) {
     return res.status(400).json({ error: 'Challenge out of date. Refresh daily challenge.' });
   }
 
-  const expanded = expandDailyChallenge(challenge);
+  const expanded = await expandDailyChallenge(challenge, user);
   res.json(expanded);
 };
 
@@ -72,7 +73,7 @@ const completeDaily = async (req, res) => {
     return res.status(400).json({ error: 'Challenge out of date. Refresh daily challenge.' });
   }
 
-  const geminiBoost = expanded ? expandDailyChallenge(challenge) : null;
+  const geminiBoost = expanded ? (await expandDailyChallenge(challenge, req.user)) : null;
   const bonusPoints = geminiBoost?.bonus_points || 0;
 
   try {

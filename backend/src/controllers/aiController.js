@@ -15,7 +15,7 @@ const suggest = async (req, res) => {
     const user = await User.findOne({ user_id });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const suggestion = generateEcoSuggestion(user);
+    const suggestion = await generateEcoSuggestion(user);
     res.json(suggestion);
   } catch (error) {
     res.status(500).json({ error: error.message });
