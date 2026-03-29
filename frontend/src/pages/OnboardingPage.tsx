@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,7 @@ export const OnboardingPage = () => {
     email: '',
     password: '',
     neighborhood_tag: '', // County
+    country: 'United States',
   });
 
   // Image Upload and Crop State
@@ -24,9 +25,48 @@ export const OnboardingPage = () => {
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [countries, setCountries] = useState<Array<{ name: string; code: string; flag?: string }>>([]);
+  const [countriesLoading, setCountriesLoading] = useState(false);
+  const [countriesError, setCountriesError] = useState('');
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let isActive = true;
+    const fetchCountries = async () => {
+      setCountriesLoading(true);
+      setCountriesError('');
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flag');
+        if (!response.ok) {
+          throw new Error('Failed to load countries');
+        }
+        const data = await response.json();
+        if (!isActive) return;
+        const mapped = (Array.isArray(data) ? data : [])
+          .map((item) => ({
+            name: item?.name?.common || '',
+            code: item?.cca2 || '',
+            flag: item?.flag || ''
+          }))
+          .filter((item) => item.name)
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setCountries(mapped);
+      } catch (err: any) {
+        if (!isActive) return;
+        setCountriesError(err?.message || 'Failed to load countries');
+      } finally {
+        if (isActive) setCountriesLoading(false);
+      }
+    };
+
+    fetchCountries();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleNext = () => setStep(step + 1);
   const handleBack = () => setStep(step - 1);
@@ -87,6 +127,7 @@ export const OnboardingPage = () => {
       formPayload.append('email', formData.email);
       formPayload.append('password', formData.password);
       formPayload.append('neighborhood_tag', formData.neighborhood_tag);        
+      formPayload.append('country', formData.country);
       if (croppedBlob) {
         formPayload.append('profile_picture', croppedBlob, 'profile.jpg');      
       }
@@ -155,10 +196,38 @@ export const OnboardingPage = () => {
                   onChange={(e) => setFormData({ ...formData, neighborhood_tag: e.target.value })}
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-on-surface">Country</label>
+                <select
+                  required
+                  className="w-full bg-surface-container-low border-none rounded-md px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-on-surface"
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                >
+                  <option value="" disabled>Select country</option>
+                  {countriesLoading && <option value="">Loading countries...</option>}
+                  {!countriesLoading && countries.length === 0 && (
+                    <>
+                      <option value="United States">United States</option>
+                      <option value="Canada">Canada</option>
+                      <option value="Mexico">Mexico</option>
+                    </>
+                  )}
+                  {!countriesLoading && countries.length > 0 &&
+                    countries.map((country) => (
+                      <option key={country.code || country.name} value={country.name}>
+                        {country.flag ? `${country.flag} ` : ''}{country.name}
+                      </option>
+                    ))}
+                </select>
+                {countriesError && (
+                  <p className="text-xs text-on-surface-variant">{countriesError}</p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={!formData.name || !formData.neighborhood_tag}
+                disabled={!formData.name || !formData.neighborhood_tag || !formData.country}
                 className="w-full bg-primary text-on-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
               >
                 Next Step

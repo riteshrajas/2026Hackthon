@@ -21,6 +21,13 @@ export const SettingsPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
   useEffect(() => {
+    if (!user) return;
+    setName(user.name || '');
+    setProfilePicture(user.profile_picture || '');
+    setProfilePreview(user.profile_picture || '');
+  }, [user]);
+
+  useEffect(() => {
     return () => {
       if (profilePreview.startsWith('blob:')) {
         URL.revokeObjectURL(profilePreview);
