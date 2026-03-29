@@ -8,13 +8,17 @@ Eco-Pulse is a hackathon project that helps communities share eco-wins, track ac
 - County-based discovery filtering
 - Actions, impact, and community widgets
 - Events and signups
+- Disaster Recovery hub with alerts, demo fallback, and community resource board
+- AI insights for actions, impact, and weather advisory guidance
 - JWT-based auth and profiles
 
 ## Tech Stack
 
 - Frontend: React 19, Vite, TypeScript, Tailwind CSS
 - Backend: Node.js, Express, MongoDB (Mongoose)
+- Deploy: Firebase Functions, Cloudflare Pages
 - Auth: JWT
+- Weather/Geo: OpenWeather, Open-Meteo
 
 ## Project Structure
 
@@ -62,6 +66,7 @@ Backend (optional):
 - JWT_SECRET: Secret for JWT signing.
 - GEMINI_API_KEY: API key for Gemini (enables AI-powered feed curation and challenge tips).
 - GEMINI_PROJECT_NUMBER: Gemini project number for prize tracking (771394172664).
+- OPENWEATHER_API_KEY: OpenWeather key used for disaster alerts and geocoding.
 
 Frontend:
 - VITE_API_URL: Base URL for the API (default http://localhost:3000/api).
@@ -152,31 +157,31 @@ Eco-Pulse is a gamified social platform that bridges the gap between environment
 - Demo link: TBD
 - Video demo link: TBD
 
-## Deployment (GCP + Cloudflare)
+## Deployment (Firebase Functions + Cloudflare Pages)
 
-### Backend on GCP Cloud Run
+### Backend on Firebase Functions
 
-1. Ensure the Google Cloud CLI is installed and authenticated.
-2. Deploy from the backend folder with buildpacks:
+1. Ensure the Firebase CLI is installed and authenticated.
+2. Set required config for OpenWeather:
    ```bash
-   gcloud run deploy eco-pulse-api \
-     --source backend \
-     --region us-central1 \
-     --allow-unauthenticated \
-     --set-env-vars MONGODB_URI=YOUR_URI,JWT_SECRET=YOUR_SECRET,GEMINI_API_KEY=YOUR_KEY
+   firebase functions:config:set env.openweather_api_key="YOUR_KEY"
    ```
-3. Note the Cloud Run URL. Your API will be available at `${CLOUD_RUN_URL}/api`.
+3. Deploy from the backend folder:
+   ```bash
+   cd backend
+   npm run deploy
+   ```
+   Note: Update the deploy script in backend/package.json with your Firebase project name if needed.
 
 ### Frontend on Cloudflare Pages
 
-1. Create a new Pages project and connect this repo.
-2. Set build settings:
-   - Build command: `npm run build`
-   - Build output directory: `frontend/dist`
-   - Root directory: `frontend`
-3. Add environment variables:
-   - `VITE_API_URL`: `https://YOUR_CLOUD_RUN_URL/api`
-4. Trigger a deployment.
+1. Deploy from the frontend folder:
+   ```bash
+   cd frontend
+   npm run deploy
+   ```
+2. Set the API base URL for production builds:
+   - `VITE_API_URL`: `https://YOUR_FIREBASE_FUNCTION_URL/api`
 
 ### Gemini Configuration
 

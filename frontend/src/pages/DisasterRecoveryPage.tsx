@@ -28,6 +28,108 @@ const formatResultLabel = (result: any) => {
   return parts.join(', ');
 };
 
+const DEMO_SCENARIOS = [
+  {
+    id: 'honolulu',
+    label: 'Honolulu, Hawaii',
+    currentWeather: {
+      temperature: 29,
+      wind_speed: 9,
+      humidity: 74,
+      description: 'tropical squalls'
+    },
+    alerts: [
+      {
+        sender_name: 'Eco-Pulse Demo',
+        event: 'Tropical Storm Watch',
+        description: 'Demo scenario: Bands of heavy rain possible. Secure loose items and avoid coastal roads during high tide.',
+        start: Math.floor(Date.now() / 1000),
+        end: Math.floor(Date.now() / 1000) + 4 * 60 * 60
+      }
+    ]
+  },
+  {
+    id: 'jakarta',
+    label: 'Jakarta, Indonesia',
+    currentWeather: {
+      temperature: 31,
+      wind_speed: 6,
+      humidity: 82,
+      description: 'heavy rain'
+    },
+    alerts: [
+      {
+        sender_name: 'Eco-Pulse Demo',
+        event: 'Urban Flood Advisory',
+        description: 'Demo scenario: Localized flooding in low-lying districts. Avoid underpasses and prepare to move valuables.',
+        start: Math.floor(Date.now() / 1000) - 2 * 60 * 60,
+        end: Math.floor(Date.now() / 1000) + 2 * 60 * 60
+      }
+    ]
+  },
+  {
+    id: 'athens',
+    label: 'Athens, Greece',
+    currentWeather: {
+      temperature: 35,
+      wind_speed: 11,
+      humidity: 28,
+      description: 'dry heat'
+    },
+    alerts: [
+      {
+        sender_name: 'Eco-Pulse Demo',
+        event: 'Wildfire Risk Warning',
+        description: 'Demo scenario: Extreme heat and wind. Avoid outdoor burning and report smoke immediately.',
+        start: Math.floor(Date.now() / 1000) - 60 * 60,
+        end: Math.floor(Date.now() / 1000) + 6 * 60 * 60
+      }
+    ]
+  }
+];
+
+const DEMO_UPDATES = [
+  {
+    update_id: 'demo-1',
+    user_id: 'demo',
+    user_name: 'Eco-Pulse Response Team',
+    title: 'Cooling center open at Central Library',
+    description: 'Demo scenario: Open 9am-7pm. Water and charging stations available. Bring ID for check-in.',
+    category: 'shelter',
+    location_name: 'Central Library, Downtown',
+    contact_info: '(555) 012-4455',
+    scope: 'global',
+    scope_value: '',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    update_id: 'demo-2',
+    user_id: 'demo',
+    user_name: 'Eco-Pulse Response Team',
+    title: 'Supply hub needs hygiene kits',
+    description: 'Demo scenario: Collecting sealed hygiene kits, baby supplies, and flashlights. Drop-off until 6pm.',
+    category: 'supplies',
+    location_name: 'Community Center West',
+    contact_info: 'relief@ecopulse.demo',
+    scope: 'global',
+    scope_value: '',
+    timestamp: new Date(Date.now() - 4.5 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    update_id: 'demo-3',
+    user_id: 'demo',
+    user_name: 'Eco-Pulse Response Team',
+    title: 'Volunteer intake at Riverfront Park',
+    description: 'Demo scenario: Cleanup volunteers meet at 8am. Gloves, masks, and safety briefing provided.',
+    category: 'volunteer',
+    location_name: 'Riverfront Park',
+    contact_info: '(555) 018-2211',
+    scope: 'global',
+    scope_value: '',
+    timestamp: new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString()
+  }
+];
+
 export const DisasterRecoveryPage = () => {
   const { user } = useAuth();
   const [scope, setScope] = useState<'county' | 'country' | 'global'>('county');
@@ -54,6 +156,8 @@ export const DisasterRecoveryPage = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const demoTapCountRef = useRef(0);
+  const [alertSource, setAlertSource] = useState<'live' | 'demo' | ''>('');
+  const [updatesSource, setUpdatesSource] = useState<'live' | 'demo' | ''>('');
 
   const scopeValue = useMemo(() => {
     if (scope === 'country') return user?.country || 'United States';
@@ -67,9 +171,11 @@ export const DisasterRecoveryPage = () => {
     try {
       const data = await getDisasterUpdates(scope, scopeValue || undefined);
       setUpdates(data || []);
+      setUpdatesSource('live');
     } catch (error) {
       console.error('Failed to load disaster updates', error);
-      setUpdatesError('Failed to load community updates');
+      setUpdates(DEMO_UPDATES);
+      setUpdatesSource('demo');
     } finally {
       setUpdatesLoading(false);
     }
@@ -89,9 +195,16 @@ export const DisasterRecoveryPage = () => {
       setCurrentWeather(data?.current || null);
       setAlertsLocation(label);
       setAlertsUpdatedAt(new Date());
+      setAlertSource('live');
     } catch (error) {
       console.error('Failed to fetch alerts', error);
-      setAlertsError('Unable to load alerts right now.');
+      const scenario = DEMO_SCENARIOS[0];
+      setAlerts(scenario.alerts);
+      setCurrentWeather(scenario.currentWeather);
+      setAlertsLocation(`Demo: ${scenario.label}`);
+      setAlertsUpdatedAt(new Date());
+      setAlertSource('demo');
+      toast('OpenWeather unavailable, showing demo alerts.', { icon: '⚠️' });
     } finally {
       setAlertsLoading(false);
       setGeoLoading(false);
@@ -137,24 +250,13 @@ export const DisasterRecoveryPage = () => {
   };
 
   const handleDemoAlert = () => {
-    setAlerts([
-      {
-        sender_name: 'Eco-Pulse Demo',
-        event: 'Coastal Flood Warning',
-        description: 'Demo alert: Coastal flooding expected in low-lying areas. Avoid flooded roads and secure outdoor items.',
-        start: Math.floor(Date.now() / 1000),
-        end: Math.floor(Date.now() / 1000) + 3 * 60 * 60
-      }
-    ]);
-    setCurrentWeather({
-      temperature: 22,
-      wind_speed: 7,
-      humidity: 68,
-      description: 'overcast clouds'
-    });
-    setAlertsLocation('Showcase mode');
+    const scenario = DEMO_SCENARIOS[0];
+    setAlerts(scenario.alerts);
+    setCurrentWeather(scenario.currentWeather);
+    setAlertsLocation(`Demo: ${scenario.label}`);
     setAlertsUpdatedAt(new Date());
     setAlertsError('');
+    setAlertSource('demo');
   };
 
   const handleTitleTap = () => {
@@ -170,6 +272,16 @@ export const DisasterRecoveryPage = () => {
     setSearchResults([]);
     setSearchQuery(formatResultLabel(result));
     loadAlertsForCoords(result.lat, result.lon, formatResultLabel(result));
+  };
+
+  const handleDemoScenario = (scenarioId: string) => {
+    const scenario = DEMO_SCENARIOS.find((item) => item.id === scenarioId) || DEMO_SCENARIOS[0];
+    setAlerts(scenario.alerts);
+    setCurrentWeather(scenario.currentWeather);
+    setAlertsLocation(`Demo: ${scenario.label}`);
+    setAlertsUpdatedAt(new Date());
+    setAlertsError('');
+    setAlertSource('demo');
   };
 
   const handleCreateUpdate = async (event: React.FormEvent) => {
@@ -258,6 +370,19 @@ export const DisasterRecoveryPage = () => {
               </button>
             </div>
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-emerald-100">
+            <span className="uppercase tracking-[0.3em] text-emerald-200">Demo locations</span>
+            {DEMO_SCENARIOS.map((scenario) => (
+              <button
+                key={scenario.id}
+                type="button"
+                onClick={() => handleDemoScenario(scenario.id)}
+                className="rounded-full border border-white/20 px-3 py-1 hover:bg-white/10"
+              >
+                {scenario.label}
+              </button>
+            ))}
+          </div>
           {searchResults.length > 0 && (
             <div className="mt-4 max-w-md rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 p-3 space-y-2">
               {searchResults.map((result) => (
@@ -280,6 +405,9 @@ export const DisasterRecoveryPage = () => {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-on-surface-variant">OpenWeather Alerts</p>
                 <h2 className="text-2xl font-bold text-on-surface mt-2">Live emergency feed</h2>
+                {alertSource === 'demo' && (
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Demo feed</p>
+                )}
               </div>
               {alertsLocation && (
                 <div className="text-xs font-semibold text-on-surface-variant text-right">
@@ -392,6 +520,9 @@ export const DisasterRecoveryPage = () => {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-on-surface-variant">Community Pulse</p>
               <h2 className="text-2xl font-bold text-on-surface mt-2">Latest recovery updates</h2>
+              {updatesSource === 'demo' && (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">Demo updates</p>
+              )}
             </div>
             <div className="flex items-center gap-2 bg-surface-container-low rounded-full p-1">
               {(['county', 'country', 'global'] as const).map((option) => (
