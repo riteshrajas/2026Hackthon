@@ -148,3 +148,8 @@ export const signupEvent = async (eventId: string) => {
   const response = await api.post(`/events/${eventId}/signup`);
   return response.data;
 };
+
+export const getEventSignups = async (eventId: string) => {
+  const response = await api.get(`/events/${eventId}/signups`);
+  return response.data;
+};

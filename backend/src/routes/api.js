@@ -59,6 +59,7 @@ router.post('/ai/suggest', protect, aiController.suggest);
 router.get('/events', protect, eventController.listEvents);
 router.post('/events', protect, eventController.createEvent);
 router.post('/events/:eventId/signup', protect, eventController.signupEvent);
+router.get('/events/:eventId/signups', protect, eventController.listEventSignups);
 
 // Community
 router.get('/community/requests', protect, communityController.getPendingRequests);

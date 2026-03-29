@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import toast, { Toaster } from 'react-hot-toast';
-import { createComment, createPost, deleteComment, getComments, getPosts, toggleCommentLike } from '../services/api';
+import {
+  createComment,
+  createPost,
+  deleteComment,
+  getComments,
+  getPosts,
+  toggleCommentLike,
+  getPendingRequests,
+  respondToRequest,
+  getActiveNinjas,
+  getEvents,
+  signupEvent
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 export const FeedPage = () => {
@@ -16,6 +28,10 @@ export const FeedPage = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [likedPostIds, setLikedPostIds] = useState<Record<string, boolean>>({});
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [activeNinjas, setActiveNinjas] = useState<any[]>([]);
+  const [eventPosts, setEventPosts] = useState<any[]>([]);
+  const [communityLoading, setCommunityLoading] = useState(true);
   const { user } = useAuth();
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const lastRefreshAtRef = useRef(0);
@@ -48,6 +64,25 @@ export const FeedPage = () => {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  useEffect(() => {
+    if (!user) return;
+    setCommunityLoading(true);
+    Promise.all([
+      getPendingRequests(),
+      getActiveNinjas('county', user.neighborhood_tag || undefined, 4),
+      getEvents('county', user.neighborhood_tag || undefined, 3)
+    ])
+      .then(([requests, ninjas, upcoming]) => {
+        setPendingRequests(requests || []);
+        setActiveNinjas(ninjas || []);
+        setEventPosts(upcoming || []);
+      })
+      .catch((error) => {
+        console.error('Failed to load community widgets', error);
+      })
+      .finally(() => setCommunityLoading(false));
+  }, [user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -262,6 +297,39 @@ export const FeedPage = () => {
     )));
   };
 
+  const handleRespondRequest = async (requestId: string, status: 'accepted' | 'declined') => {
+    try {
+      await respondToRequest(requestId, status);
+      setPendingRequests((prev) => prev.filter((request) => request.request_id !== requestId));
+    } catch (error) {
+      console.error('Failed to respond to request', error);
+      toast.error('Failed to update request');
+    }
+  };
+
+  const handleEventSignup = async (eventId: string) => {
+    try {
+      await signupEvent(eventId);
+      setEventPosts((prev) => prev.map((event) => (
+        event.event_id === eventId
+          ? { ...event, is_signed_up: true, signup_count: event.signup_count + 1 }
+          : event
+      )));
+      toast.success('Signed up for event!');
+    } catch (error) {
+      console.error('Failed to sign up', error);
+      toast.error('Event signup failed');
+    }
+  };
+
+  const buildMapLinks = (location: string) => {
+    const query = encodeURIComponent(location);
+    return {
+      google: `https://www.google.com/maps/search/?api=1&query=${query}`,
+      apple: `https://maps.apple.com/?q=${query}`
+    };
+  };
+
   return (
     <MainLayout>
       <Toaster position="bottom-center" />
@@ -326,6 +394,63 @@ export const FeedPage = () => {
           )}
 
           {/* Dynamic Feed Posts */}
+          {eventPosts.length > 0 && (
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-headline font-bold text-lg">Community Events</h3>
+                <span className="text-xs text-on-surface-variant">From your county</span>
+              </div>
+              {eventPosts.map((event) => {
+                const location = event.location_address || event.location_name;
+                const links = location ? buildMapLinks(location) : null;
+                return (
+                  <article key={event.event_id} className="bg-surface-container-lowest rounded-lg overflow-hidden group">
+                    <div className="p-8 pb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <img
+                          alt={`${event.creator_name} avatar`}
+                          className="w-12 h-12 rounded-full object-cover"
+                          src={event.creator_profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(event.creator_name || 'Organizer')}&background=6effc1&color=006948`}
+                        />
+                        <div>
+                          <h4 className="font-headline font-bold text-on-surface">{event.creator_name}</h4>
+                          <span className="text-xs text-on-surface-variant">{new Date(event.start_time).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <span className="bg-secondary-container text-on-secondary-fixed text-[0.75rem] font-bold uppercase tracking-wider px-3 py-1 rounded-sm">EVENT</span>
+                    </div>
+                    <div className="px-8 pb-6">
+                      <h5 className="text-lg font-bold text-on-surface">{event.title}</h5>
+                      <p className="text-on-surface text-sm leading-relaxed mt-2">{event.description}</p>
+                      {location && (
+                        <p className="text-xs text-on-surface-variant mt-2">
+                          {location}
+                          {links && (
+                            <span className="ml-2">
+                              <a className="text-primary font-semibold" href={links.google} target="_blank" rel="noreferrer">Google Maps</a>
+                              <span className="mx-2 text-on-surface-variant">|</span>
+                              <a className="text-primary font-semibold" href={links.apple} target="_blank" rel="noreferrer">Apple Maps</a>
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      <div className="mt-4 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleEventSignup(event.event_id)}
+                          disabled={event.is_signed_up || event.is_full}
+                          className="text-xs font-bold px-4 py-2 rounded-full bg-primary text-on-primary disabled:opacity-50"
+                        >
+                          {event.is_full ? 'Full' : event.is_signed_up ? 'Joined' : 'Join'}
+                        </button>
+                        <span className="text-xs text-on-surface-variant">{event.signup_count}{event.capacity ? ` / ${event.capacity} spots` : ' going'}</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
           {posts.map((post) => (
             <article key={getPostId(post)} className="bg-surface-container-lowest rounded-lg overflow-hidden group">
               <div className="p-8 pb-4 flex items-center justify-between">
@@ -459,76 +584,73 @@ export const FeedPage = () => {
           <section className="bg-surface-container-low rounded-lg p-6">
             <h3 className="font-headline font-bold text-lg mb-6 flex items-center justify-between">
               Pending Requests
-              <span className="bg-primary-container text-on-primary-container text-xs px-2 py-0.5 rounded-full">2</span>
+              <span className="bg-primary-container text-on-primary-container text-xs px-2 py-0.5 rounded-full">{pendingRequests.length}</span>
             </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img alt="Mira Sun avatar" className="w-10 h-10 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuuGF_27D7Vd4_1OSReRtt2NHrlslSZy2UVedZD75naf0i92UqTDFJUttRYrqKSnMFU8pwofnqOQIDuNj6JoqBZdgc2jVSAmgQzdgThQtSos0d96RxeiRbmKNPihSrB8DA-DHOT6ko3tR6jC0TefT7XIjKcIIfCKRwnI81DGULDE9m7O0qmBvr3JRLi45vRNSGEAXDjqSsVAnRyWnLN6tiZ5eTGBFyTMp7yDLpwrYtC5BmKhke1i9YmRHkJGlsPAd3Bq53QugvXtUn"/>
-                  <span className="font-bold text-sm">Mira Sun</span>
-                </div>
-                <div className="flex gap-2">
-                  <button className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-sm">check</span>
-                  </button>
-                  <button className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-                </div>
+            {communityLoading ? (
+              <div className="text-sm text-on-surface-variant">Loading requests...</div>
+            ) : pendingRequests.length === 0 ? (
+              <div className="text-sm text-on-surface-variant">No pending requests.</div>
+            ) : (
+              <div className="space-y-4">
+                {pendingRequests.map((request) => (
+                  <div key={request.request_id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img
+                        alt={`${request.from_user_name} avatar`}
+                        className="w-10 h-10 rounded-full object-cover"
+                        src={request.from_user_profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(request.from_user_name)}&background=6effc1&color=006948`}
+                      />
+                      <span className="font-bold text-sm">{request.from_user_name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center hover:scale-110 transition-transform"
+                        onClick={() => handleRespondRequest(request.request_id, 'accepted')}
+                      >
+                        <span className="material-symbols-outlined text-sm">check</span>
+                      </button>
+                      <button
+                        className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center hover:scale-110 transition-transform"
+                        onClick={() => handleRespondRequest(request.request_id, 'declined')}
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img alt="Leo Green avatar" className="w-10 h-10 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlAhGjd-pi5JUDp6mJWztTaTnSVVCwdRL7zcdf4G772WyOks4IkFOL5pF7wEU7CoVol_np_4PBgMxeRrildl_DrLEntePGJse-Rfz5OZMmUzkFT3jNaEMYh36eoCJmpITLIPeu2chkQft4gL7jP7gOHlsQ0E1BTaA6ag_SKZPNi9FAKabd6CdjDAgxqe1MDY3SMTayM1U-SR5yEOD0gJNn1gE8LeO49ohR9mIzhZEcP2d4xnIxwUJTmRPbmnLWorM_Txw6cw1v7eUy"/>
-                  <span className="font-bold text-sm">Leo Green</span>
-                </div>
-                <div className="flex gap-2">
-                  <button className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-sm">check</span>
-                  </button>
-                  <button className="w-8 h-8 rounded-full bg-surface-container-highest text-on-surface-variant flex items-center justify-center hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            )}
           </section>
 
           {/* Active Ninjas */}
           <section className="bg-surface-container-low rounded-lg p-6">
             <h3 className="font-headline font-bold text-lg mb-6">Active Ninjas</h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="relative">
-                  <img alt="Sara Seedling avatar" className="w-11 h-11 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoCaJMwibyxb6gyb6YqJuS9ceNvuCNyCEL7DD0ZzFTyw-5nD63UKQa_0N1kyfQSfn9JtJh75mJr3c68c-5SvpyuwdNtnEr9f5vGIcewlsKz6pUJNm5i87vlgcbOXTN7FeGTG4tflxVPUGm-xdw6Y8gHHes3A1kyHkjED5oqttkD467PIkWBJ_pMGr2V3WRUIqj6atlm2zrn3HS8Ia-0sfmkm404gOMy1RvSVqEO4dHe5sfMpTh6vhbN_i5KLSZ5YRMiby_TAmKiWRx"/>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary-container border-2 border-surface-container-low rounded-full"></div>
-                </div>
-                <div>
-                  <h5 className="font-bold text-sm">Sara Seedling</h5>
-                  <p className="text-xs text-on-surface-variant mt-1 italic">"Planting 50 new oaks today!"</p>
-                </div>
+            {communityLoading ? (
+              <div className="text-sm text-on-surface-variant">Loading active ninjas...</div>
+            ) : activeNinjas.length === 0 ? (
+              <div className="text-sm text-on-surface-variant">No recent activity yet.</div>
+            ) : (
+              <div className="space-y-6">
+                {activeNinjas.map((ninja) => (
+                  <div key={ninja.user_id} className="flex items-start gap-4">
+                    <div className="relative">
+                      <img
+                        alt={`${ninja.name} avatar`}
+                        className="w-11 h-11 rounded-full object-cover"
+                        src={ninja.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(ninja.name)}&background=6effc1&color=006948`}
+                      />
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary-container border-2 border-surface-container-low rounded-full"></div>
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm">{ninja.name}</h5>
+                      <p className="text-xs text-on-surface-variant mt-1 italic">{ninja.status}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-start gap-4">
-                <div className="relative">
-                  <img alt="Ben Bike-alot avatar" className="w-11 h-11 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPM76WKKy8fPZ62dlKE_E1Xdnk5tugMlEvYQ1pWqZvucfOsnddGUusSGRdqBINqzgXDGutOIsta90uRoCQ7FtAiuS7iI-ywkJudFUi5bjBghmGLqK6UZKjooQ7XcbPAoCRlNGvRBcpkt21JHi-QkPCWA2UQkQZgB61wC8lyU3evGY2Y-cM07LqWCpKoJ50BTC2bAyiwwDaCXBRRhycRHzlwn-XPQXYWF40-cjs9RculfUFm4yd7Ny_fFYxc8jL70eWOE-WGlPVGMtx"/>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary-container border-2 border-surface-container-low rounded-full"></div>
-                </div>
-                <div>
-                  <h5 className="font-bold text-sm">Ben Bike-alot</h5>
-                  <p className="text-xs text-on-surface-variant mt-1 italic">"100 miles commute this week 🚲"</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="relative">
-                  <img alt="Amy Aqua avatar" className="w-11 h-11 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQUlNYJPQxEaahWlK74yLGPTV3lFSpFlEzTGdVFPQMPBhSlVVVN8mp701qdVzq-uzajstNevw7YTabLsuC-_-J6NUo9zji44OrLmjluX_GV1xprWFFaiCE2aZ1suHNB8zYUCK8Q9Dywg0CrEmeb9PjfnUEiG5caOz5X0w8ygpR-bKnmov-ovXAw_VvDcxjCD1OusuFRfQuRUgJZjnLEmWls8XqTwC5lyiQXKlR1OjNtdoPsTQ4Mz8iC66Br3G2qsi8GLCHPckxjWZs"/>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary-container border-2 border-surface-container-low rounded-full"></div>
-                </div>
-                <div>
-                  <h5 className="font-bold text-sm">Amy Aqua</h5>
-                  <p className="text-xs text-on-surface-variant mt-1 italic">"Installed a gray-water system!"</p>
-                </div>
-              </div>
-            </div>
+            )}
           </section>
+
 
           {/* Footer Links */}
           <div className="px-6 py-4 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant opacity-50">

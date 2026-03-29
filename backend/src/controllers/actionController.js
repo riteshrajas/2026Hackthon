@@ -62,6 +62,11 @@ const expandDaily = async (req, res) => {
 const completeDaily = async (req, res) => {
   const { challenge_id, expanded } = req.body;
   const challenge = getDailyChallenge();
+  const userId = req.userAuth?.user_id;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authorized' });
+  }
 
   if (challenge_id && challenge_id !== challenge.id) {
     return res.status(400).json({ error: 'Challenge out of date. Refresh daily challenge.' });
@@ -71,7 +76,7 @@ const completeDaily = async (req, res) => {
   const bonusPoints = geminiBoost?.bonus_points || 0;
 
   try {
-    const result = await awardEcoCredits(req.userAuth?.user_id, challenge.action_type, {
+    const result = await awardEcoCredits(userId, challenge.action_type, {
       actionLabel: challenge.title,
       bonusPoints,
       source: 'daily'

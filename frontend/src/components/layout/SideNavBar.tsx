@@ -30,6 +30,9 @@ export const SideNavBar = () => {
         <Link to="/discover" className={`${isActive('/discover') ? 'bg-[#6effc1] text-[#006041]' : 'text-[#2b2f2e] dark:text-[#dfe4e1] hover:bg-[#dfe4e1] dark:hover:bg-emerald-800'} rounded-full mx-2 px-4 py-3 flex items-center gap-3 transition-all`}>
           <span className="material-symbols-outlined">explore</span> Discover
         </Link>
+        <Link to="/events" className={`${isActive('/events') ? 'bg-[#6effc1] text-[#006041]' : 'text-[#2b2f2e] dark:text-[#dfe4e1] hover:bg-[#dfe4e1] dark:hover:bg-emerald-800'} rounded-full mx-2 px-4 py-3 flex items-center gap-3 transition-all`}>
+          <span className="material-symbols-outlined">event</span> Events
+        </Link>
         <Link to="/impact" className={`${isActive('/impact') ? 'bg-[#6effc1] text-[#006041]' : 'text-[#2b2f2e] dark:text-[#dfe4e1] hover:bg-[#dfe4e1] dark:hover:bg-emerald-800'} rounded-full mx-2 px-4 py-3 flex items-center gap-3 transition-all`}>
           <span className="material-symbols-outlined">bar_chart</span> Impact
         </Link>

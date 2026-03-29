@@ -1,4 +1,4 @@
-const { Event, EventSignup } = require('../models/db');
+const { Event, EventSignup, User } = require('../models/db');
 const { v4: uuidv4 } = require('uuid');
 
 const listEvents = async (req, res) => {
@@ -146,8 +146,51 @@ const signupEvent = async (req, res) => {
   }
 };
 
+const listEventSignups = async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    const userId = req.userAuth?.user_id;
+
+    const event = await Event.findOne({ event_id: eventId });
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    if (event.creator_id !== userId) {
+      return res.status(403).json({ error: 'Only the event creator can view attendees' });
+    }
+
+    const signups = await EventSignup.find({ event_id: eventId, status: 'going' })
+      .sort({ createdAt: -1 });
+
+    const users = await User.find({ user_id: { $in: signups.map((signup) => signup.user_id) } })
+      .select('user_id name email profile_picture');
+
+    const userMap = {};
+    for (const attendee of users) {
+      userMap[attendee.user_id] = attendee;
+    }
+
+    const response = signups.map((signup) => {
+      const attendee = userMap[signup.user_id];
+      return {
+        user_id: signup.user_id,
+        name: attendee?.name || 'Eco Member',
+        email: attendee?.email || '',
+        profile_picture: attendee?.profile_picture || '',
+        joined_at: signup.createdAt
+      };
+    });
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   listEvents,
   createEvent,
-  signupEvent
+  signupEvent,
+  listEventSignups
 };

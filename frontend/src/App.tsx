@@ -7,6 +7,7 @@ import { DiscoverPage } from './pages/DiscoverPage';
 import { ImpactPage } from './pages/ImpactPage';
 import { CommunityPage } from './pages/CommunityPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { EventsPage } from './pages/EventsPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -27,6 +28,7 @@ function AppRoutes() {
       <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
       <Route path="/actions" element={<ProtectedRoute><ActionsPage /></ProtectedRoute>} />
       <Route path="/discover" element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>} />
+      <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
       <Route path="/impact" element={<ProtectedRoute><ImpactPage /></ProtectedRoute>} />
       <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
