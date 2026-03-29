@@ -8,6 +8,8 @@ const aiController = require('../controllers/aiController');
 const authController = require('../controllers/authController');
 const postController = require('../controllers/postController');
 const commentController = require('../controllers/commentController');
+const eventController = require('../controllers/eventController');
+const communityController = require('../controllers/communityController');
 const { protect } = require('../utils/authMiddleware');
 const multer = require('multer');
 const path = require('path');
@@ -42,11 +44,26 @@ router.get('/user/:id', protect, userController.getUser);
 
 // Action Log Route
 router.post('/action/log', protect, actionController.logAction);
+router.get('/action/history', protect, actionController.getActionHistory);
+router.get('/action/daily', protect, actionController.getDaily);
+router.post('/action/daily/expand', protect, actionController.expandDaily);
+router.post('/action/daily/complete', protect, actionController.completeDaily);
 
 // Leaderboard Routes
 router.get('/leaderboard/:type/:id', protect, leaderboardController.getLeaderboard);
 
 // AI Suggestions
 router.post('/ai/suggest', protect, aiController.suggest);
+
+// Events
+router.get('/events', protect, eventController.listEvents);
+router.post('/events', protect, eventController.createEvent);
+router.post('/events/:eventId/signup', protect, eventController.signupEvent);
+
+// Community
+router.get('/community/requests', protect, communityController.getPendingRequests);
+router.post('/community/requests', protect, communityController.createRequest);
+router.post('/community/requests/:requestId/respond', protect, communityController.respondToRequest);
+router.get('/community/active', protect, communityController.getActiveNinjas);
 
 module.exports = router;

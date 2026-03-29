@@ -1,12 +1,30 @@
+import { useEffect, useMemo, useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { useAuth } from '../context/AuthContext';
-import { logAction } from '../services/api';
+import {
+    logAction,
+    getActionHistory,
+    getDailyChallenge,
+    expandDailyChallenge,
+    completeDailyChallenge
+} from '../services/api';
 import toast, { Toaster } from 'react-hot-toast';
 
 export const ActionsPage = () => {
   const { user } = useAuth();
+    const [dailyChallenge, setDailyChallenge] = useState<any | null>(null);
+    const [dailyExpanded, setDailyExpanded] = useState<any | null>(null);
+    const [isExpanding, setIsExpanding] = useState(false);
+    const [isCompleting, setIsCompleting] = useState(false);
+    const [history, setHistory] = useState<any[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
 
-  const handleAction = async (actionType: string, actionName: string) => {
+    const dailyPointsLabel = useMemo(() => {
+        if (!dailyChallenge?.points_range) return '';
+        return `${dailyChallenge.points_range.min}-${dailyChallenge.points_range.max}`;
+    }, [dailyChallenge]);
+
+    const handleAction = async (actionType: string, actionName: string) => {
     if (!user) {
       toast.error('You must be logged in to do this.');
       return;
@@ -14,13 +32,67 @@ export const ActionsPage = () => {
     
     try {
       toast.loading(`Logging ${actionName}...`, { id: 'action-log' });
-      const result = await logAction(user.id, actionType);
-      toast.success(`Action "${actionName}" logged! Earned ${result.points} PTS & saved ${result.co2_saved}kg CO2!`, { id: 'action-log', duration: 4000 });
+            const result = await logAction(user.id, actionType, actionName);
+            toast.success(`Action "${actionName}" logged! Earned ${result.points} PTS & saved ${result.co2}kg CO2!`, { id: 'action-log', duration: 4000 });
+            const updated = await getActionHistory(10);
+            setHistory(updated);
     } catch (error) {
       toast.error('Failed to log action', { id: 'action-log' });
       console.error(error);
     }
   };
+
+    const handleDailyExpand = async () => {
+        if (!dailyChallenge) return;
+        setIsExpanding(true);
+        try {
+            const expanded = await expandDailyChallenge(dailyChallenge.id);
+            setDailyExpanded(expanded);
+            toast.success(`Gemini boosted +${expanded.bonus_points} pts!`);
+        } catch (error) {
+            console.error(error);
+            toast.error('Gemini boost failed. Try again.');
+        } finally {
+            setIsExpanding(false);
+        }
+    };
+
+    const handleDailyComplete = async () => {
+        if (!dailyChallenge) return;
+        setIsCompleting(true);
+        try {
+            const result = await completeDailyChallenge(dailyChallenge.id, Boolean(dailyExpanded));
+            toast.success(`Daily challenge logged! Earned ${result.points} PTS.`, { duration: 4000 });
+            const updated = await getActionHistory(10);
+            setHistory(updated);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to complete daily challenge');
+        } finally {
+            setIsCompleting(false);
+        }
+    };
+
+    useEffect(() => {
+        getDailyChallenge()
+            .then((challenge) => {
+                setDailyChallenge(challenge);
+                setDailyExpanded(null);
+            })
+            .catch((error) => {
+                console.error(error);
+            });
+    }, []);
+
+    useEffect(() => {
+        setHistoryLoading(true);
+        getActionHistory(10)
+            .then((data) => setHistory(data))
+            .catch((error) => {
+                console.error(error);
+            })
+            .finally(() => setHistoryLoading(false));
+    }, []);
 
     return (
         <MainLayout>
@@ -28,17 +100,23 @@ export const ActionsPage = () => {
 
             <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Hero Section */}
-        <section className="bg-primary rounded-[2rem] p-10 text-white relative overflow-hidden">
+                <section className="bg-primary rounded-[2rem] p-10 text-white relative overflow-hidden">
           <div className="relative z-10 max-w-xl">
             <p className="text-xs font-semibold tracking-wider text-green-100 mb-3">DAILY CHALLENGE</p>
-            <h1 className="text-5xl font-bold mb-4 leading-tight">Master your Eco-Impact today!</h1>
-            <p className="text-green-50 mb-8 max-w-md text-lg">
-              Complete daily missions to level up your Green Ninja and unlock exclusive environmental rewards.
-            </p>
-            <button className="bg-[#a7f3d0] text-primary font-bold px-6 py-3 rounded-full hover:bg-white transition-colors flex items-center gap-2">
-              Start Mission
-              <span>🚀</span>
-            </button>
+                        <h1 className="text-5xl font-bold mb-4 leading-tight">
+                            {dailyChallenge?.title || 'Master your Eco-Impact today!'}
+                        </h1>
+                        <p className="text-green-50 mb-8 max-w-md text-lg">
+                            {dailyChallenge?.description || 'Complete daily missions to level up your Green Ninja and unlock exclusive environmental rewards.'}
+                        </p>
+                        <button
+                            className="bg-[#a7f3d0] text-primary font-bold px-6 py-3 rounded-full hover:bg-white transition-colors flex items-center gap-2"
+                            onClick={handleDailyComplete}
+                            disabled={!dailyChallenge || isCompleting}
+                        >
+                            {isCompleting ? 'Logging...' : 'Start Mission'}
+                            <span>🚀</span>
+                        </button>
           </div>
           {/* Decorative Icon */}
           <div className="absolute right-10 bottom-0 opacity-20">
@@ -51,19 +129,43 @@ export const ActionsPage = () => {
         {/* Action Cards Grid */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Main Action */}
-            <div className="bg-[#6effc1] rounded-3xl p-8 col-span-1 md:col-span-2 relative overflow-hidden flex flex-col justify-between h-72">
+                        <div className="bg-[#6effc1] rounded-3xl p-8 col-span-1 md:col-span-2 relative overflow-hidden flex flex-col justify-between h-72">
                 <div>
                    <p className="text-xs font-bold tracking-wider text-primary mb-3 uppercase flex items-center gap-2">
                         <span className="bg-white p-1 rounded-full text-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
                         Daily Challenge
                     </p>
-                    <h2 className="text-3xl font-bold text-primary mb-2">Ninja Stealth Walk</h2>
-                    <p className="text-primary/80 max-w-sm text-sm">Walk 5,000 steps today to reduce urban noise and carbon emissions.</p>
+                                        <h2 className="text-3xl font-bold text-primary mb-2">{dailyChallenge?.title || 'Loading...'}</h2>
+                                        <p className="text-primary/80 max-w-sm text-sm">{dailyChallenge?.description || 'Gathering today\'s mission.'}</p>
+                                        {dailyExpanded?.expanded_description && (
+                                            <p className="text-primary/80 max-w-sm text-xs mt-3">{dailyExpanded.expanded_description}</p>
+                                        )}
                 </div>
                 
                 <div className="flex items-end justify-between z-10">
-                    <div className="text-primary font-bold text-4xl">+150 <span className="text-sm">PTS</span></div>
-                    <button onClick={() => handleAction('VERIFIED', 'Ninja Stealth Walk')} className="bg-primary text-white font-medium px-6 py-2.5 rounded-full hover:bg-primary-dim transition-colors cursor-pointer relative z-20">Start Action</button>
+                                        <div className="text-primary font-bold text-4xl">
+                                            +{dailyPointsLabel || '...'} <span className="text-sm">PTS</span>
+                                            {dailyExpanded?.bonus_points && (
+                                                <span className="block text-xs font-semibold text-primary/70">Gemini +{dailyExpanded.bonus_points} pts</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={handleDailyExpand}
+                                                disabled={!dailyChallenge || isExpanding || Boolean(dailyExpanded)}
+                                                className="bg-white text-primary font-semibold px-4 py-2 rounded-full hover:bg-primary/10 transition-colors"
+                                            >
+                                                {dailyExpanded ? 'Gemini Boosted' : isExpanding ? 'Boosting...' : 'Ask Gemini'}
+                                            </button>
+                                            <button
+                                                onClick={handleDailyComplete}
+                                                disabled={!dailyChallenge || isCompleting}
+                                                className="bg-primary text-white font-medium px-6 py-2.5 rounded-full hover:bg-primary-dim transition-colors cursor-pointer relative z-20"
+                                            >
+                                                {isCompleting ? 'Logging...' : 'Start Action'}
+                                            </button>
+                                        </div>
                 </div>
 
                 <div className="absolute right-6 top-6 opacity-30 text-primary pointer-events-none">
@@ -133,52 +235,37 @@ export const ActionsPage = () => {
         </section>
 
         {/* Task History */}
-        <section className="pt-4">
+                <section className="pt-4">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     Task History
                     <span className="w-2 h-2 rounded-full bg-green-400"></span>
                 </h2>
-                <a href="#" className="text-primary font-bold text-sm">View All</a>
+                                <span className="text-primary font-bold text-sm">Latest</span>
             </div>
 
-            <div className="space-y-3">
-                {/* List Item 1 */}
-                <div className="bg-white rounded-2xl p-4 flex items-center shadow-sm">
-                    <div className="bg-green-100 p-2 rounded-full text-green-600 mr-4">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                    <div className="flex-1">
-                        <h4 className="font-bold text-gray-900">Reusable Bottle Sync</h4>
-                        <p className="text-xs text-gray-500">Saved 0.5L plastic • 2 hours ago</p>
-                    </div>
-                    <div className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">+20 XP</div>
-                </div>
-
-                {/* List Item 2 */}
-                <div className="bg-white rounded-2xl p-4 flex items-center shadow-sm">
-                    <div className="bg-blue-100 p-2 rounded-full text-blue-600 mr-4">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16.5C21 16.88 20.79 17.21 20.47 17.38L12.57 21.82C12.41 21.94 12.21 22 12 22C11.79 22 11.59 21.94 11.43 21.82L3.53 17.38C3.21 17.21 3 16.88 3 16.5V7.5C3 7.12 3.21 6.79 3.53 6.62L11.43 2.18C11.59 2.06 11.79 2 12 2C12.21 2 12.41 2.06 12.57 2.18L20.47 6.62C20.79 6.79 21 7.12 21 7.5V16.5Z"/></svg>
-                    </div>
-                    <div className="flex-1">
-                        <h4 className="font-bold text-gray-900">Compost Champion</h4>
-                        <p className="text-xs text-gray-500">1.2kg waste diverted • Yesterday</p>
-                    </div>
-                    <div className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">+45 XP</div>
-                </div>
-
-                {/* List Item 3 */}
-                <div className="bg-white rounded-2xl p-4 flex items-center shadow-sm">
-                    <div className="bg-yellow-100 p-2 rounded-full text-yellow-600 mr-4">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    </div>
-                    <div className="flex-1">
-                        <h4 className="font-bold text-gray-900">Vampire Hunt Master</h4>
-                        <p className="text-xs text-gray-500">5 devices unplugged • 3 days ago</p>
-                    </div>
-                    <div className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">+50 XP</div>
-                </div>
-            </div>
+                        {historyLoading ? (
+                            <div className="text-sm text-gray-500">Loading history...</div>
+                        ) : history.length === 0 ? (
+                            <div className="text-sm text-gray-500">No actions logged yet.</div>
+                        ) : (
+                            <div className="space-y-3">
+                                {history.map((entry) => (
+                                    <div key={entry._id || entry.timestamp} className="bg-white rounded-2xl p-4 flex items-center shadow-sm">
+                                        <div className="bg-green-100 p-2 rounded-full text-green-600 mr-4">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-900">{entry.action_label || entry.action_type}</h4>
+                                            <p className="text-xs text-gray-500">
+                                                {entry.co2_saved}kg CO2 saved • {new Date(entry.createdAt || entry.timestamp).toLocaleString()}
+                                            </p>
+                                        </div>
+                                        <div className="font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full text-sm">+{entry.points_awarded} XP</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
         </section>
             </main>
 

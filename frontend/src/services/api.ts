@@ -28,10 +28,34 @@ export const getUserStats = async (userId: string) => {
   return response.data;
 };
 
-export const logAction = async (userId: string, actionType: string) => {
+export const logAction = async (userId: string, actionType: string, actionLabel?: string) => {
   const response = await api.post(`/action/log`, {
     user_id: userId,
-    action_type: actionType
+    action_type: actionType,
+    action_label: actionLabel
+  });
+  return response.data;
+};
+
+export const getActionHistory = async (limit = 10) => {
+  const response = await api.get(`/action/history`, { params: { limit } });
+  return response.data;
+};
+
+export const getDailyChallenge = async () => {
+  const response = await api.get('/action/daily');
+  return response.data;
+};
+
+export const expandDailyChallenge = async (challengeId: string) => {
+  const response = await api.post('/action/daily/expand', { challenge_id: challengeId });
+  return response.data;
+};
+
+export const completeDailyChallenge = async (challengeId: string, expanded: boolean) => {
+  const response = await api.post('/action/daily/complete', {
+    challenge_id: challengeId,
+    expanded
   });
   return response.data;
 };
@@ -78,5 +102,49 @@ export const toggleCommentLike = async (postId: string, commentId: string) => {
 
 export const updateUser = async (userId: string, data: { name?: string; profile_picture?: string }) => {
   const response = await api.put(`/user/${userId}`, data);
+  return response.data;
+};
+
+export const getPendingRequests = async () => {
+  const response = await api.get('/community/requests');
+  return response.data;
+};
+
+export const respondToRequest = async (requestId: string, status: 'accepted' | 'declined') => {
+  const response = await api.post(`/community/requests/${requestId}/respond`, { status });
+  return response.data;
+};
+
+export const getActiveNinjas = async (scope: 'county' | 'country' | 'global', value?: string, limit = 5) => {
+  const response = await api.get('/community/active', { params: { scope, value, limit } });
+  return response.data;
+};
+
+export const getEvents = async (scope: 'county' | 'country' | 'global', value?: string, limit = 50) => {
+  const response = await api.get('/events', { params: { scope, value, limit } });
+  return response.data;
+};
+
+export const createEvent = async (payload: {
+  title: string;
+  description: string;
+  start_time: string;
+  end_time?: string;
+  location_name?: string;
+  location_address?: string;
+  scope?: 'county' | 'country' | 'global';
+  scope_value?: string;
+  capacity?: number | null;
+  organization_name?: string;
+  organization_url?: string;
+  details_url?: string;
+  image_url?: string;
+}) => {
+  const response = await api.post('/events', payload);
+  return response.data;
+};
+
+export const signupEvent = async (eventId: string) => {
+  const response = await api.post(`/events/${eventId}/signup`);
   return response.data;
 };
