@@ -60,6 +60,8 @@ npm run dev
 Backend (optional):
 - MONGODB_URI: Mongo connection string. If missing, an in-memory MongoDB instance is used.
 - JWT_SECRET: Secret for JWT signing.
+- GEMINI_API_KEY: API key for Gemini (enables AI-powered feed curation and challenge tips).
+- GEMINI_PROJECT_NUMBER: Gemini project number for prize tracking (771394172664).
 
 Frontend:
 - VITE_API_URL: Base URL for the API (default http://localhost:3000/api).
@@ -102,7 +104,7 @@ Eco-Pulse is a gamified social platform that bridges the gap between environment
 - Frontend: React + Vite + TypeScript with Tailwind CSS for the interface.
 - Backend: Node.js + Express with MongoDB (Mongoose) for data storage.
 - Auth: JWT-based login and protected API routes.
-- AI hooks: A mock suggestion service for daily challenges and personalized tips.
+- AI hooks: Gemini-powered feed curation and dynamic challenge tips, with graceful fallback.
 
 #### Challenges we ran into
 
@@ -138,14 +140,45 @@ Eco-Pulse is a gamified social platform that bridges the gap between environment
 
 ### Additional Info (Judges and Organizers)
 
-- Sponsor / Special Prizes (targeted): Social Good Track, Best UI/UX, AI/ML Track. MLH Gemini API and MLH ElevenLabs are planned but not live yet.
+- Sponsor / Special Prizes (targeted): Social Good Track, Best UI/UX, AI/ML Track, MLH Best Use of Gemini API.
 - Universities or schools: Wayne State University; Oakland Community College.
 - Tech feedback: MongoDB + Mongoose made iteration fast, and the in-memory fallback kept demos reliable. Vite + React delivered fast dev cycles, and Tailwind helped us ship a clean UI quickly.
-- AI tools used: OpenAI (GitHub Copilot).
-- Generative AI model or API usage: Not fully integrated yet; we used a mock suggestion service and left hooks for Gemini and ElevenLabs. N/A for a live model in this build.
-- Gemini Project Number: TBD
+- AI tools used: OpenAI (GitHub Copilot), Gemini.
+- Generative AI model or API usage: Yes. Gemini re-ranks the feed based on user actions and generates personalized daily challenge tips, but it stays invisible to the user experience.
+- Gemini Project Number: 771394172664
 
 ### Links and Media
 
 - Demo link: TBD
 - Video demo link: TBD
+
+## Deployment (GCP + Cloudflare)
+
+### Backend on GCP Cloud Run
+
+1. Ensure the Google Cloud CLI is installed and authenticated.
+2. Deploy from the backend folder with buildpacks:
+   ```bash
+   gcloud run deploy eco-pulse-api \
+     --source backend \
+     --region us-central1 \
+     --allow-unauthenticated \
+     --set-env-vars MONGODB_URI=YOUR_URI,JWT_SECRET=YOUR_SECRET,GEMINI_API_KEY=YOUR_KEY
+   ```
+3. Note the Cloud Run URL. Your API will be available at `${CLOUD_RUN_URL}/api`.
+
+### Frontend on Cloudflare Pages
+
+1. Create a new Pages project and connect this repo.
+2. Set build settings:
+   - Build command: `npm run build`
+   - Build output directory: `frontend/dist`
+   - Root directory: `frontend`
+3. Add environment variables:
+   - `VITE_API_URL`: `https://YOUR_CLOUD_RUN_URL/api`
+4. Trigger a deployment.
+
+### Gemini Configuration
+
+- Add `GEMINI_API_KEY` in the backend environment (Cloud Run or local `.env`).
+- The project number for prize submissions is `771394172664`.
