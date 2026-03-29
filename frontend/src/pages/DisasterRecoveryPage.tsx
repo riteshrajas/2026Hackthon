@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { useAuth } from '../context/AuthContext';
 import {
   createDisasterUpdate,
+  deleteDisasterUpdate,
   geocodeDisasterLocation,
   getDisasterAlerts,
   getDisasterUpdates
@@ -52,6 +53,7 @@ export const DisasterRecoveryPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const demoTapCountRef = useRef(0);
 
   const scopeValue = useMemo(() => {
     if (scope === 'country') return user?.country || 'United States';
@@ -134,6 +136,35 @@ export const DisasterRecoveryPage = () => {
     }
   };
 
+  const handleDemoAlert = () => {
+    setAlerts([
+      {
+        sender_name: 'Eco-Pulse Demo',
+        event: 'Coastal Flood Warning',
+        description: 'Demo alert: Coastal flooding expected in low-lying areas. Avoid flooded roads and secure outdoor items.',
+        start: Math.floor(Date.now() / 1000),
+        end: Math.floor(Date.now() / 1000) + 3 * 60 * 60
+      }
+    ]);
+    setCurrentWeather({
+      temperature: 22,
+      wind_speed: 7,
+      humidity: 68,
+      description: 'overcast clouds'
+    });
+    setAlertsLocation('Showcase mode');
+    setAlertsUpdatedAt(new Date());
+    setAlertsError('');
+  };
+
+  const handleTitleTap = () => {
+    demoTapCountRef.current += 1;
+    if (demoTapCountRef.current >= 5) {
+      handleDemoAlert();
+      demoTapCountRef.current = 0;
+    }
+  };
+
   const handleSelectLocation = (result: any) => {
     if (!result) return;
     setSearchResults([]);
@@ -176,6 +207,18 @@ export const DisasterRecoveryPage = () => {
     }
   };
 
+  const handleDeleteUpdate = async (updateId: string) => {
+    if (!window.confirm('Delete this update?')) return;
+    try {
+      await deleteDisasterUpdate(updateId);
+      setUpdates((prev) => prev.filter((item) => item.update_id !== updateId));
+      toast.success('Update deleted');
+    } catch (error) {
+      console.error('Failed to delete update', error);
+      toast.error('Failed to delete update');
+    }
+  };
+
   return (
     <MainLayout>
       <Toaster position="bottom-center" />
@@ -184,7 +227,7 @@ export const DisasterRecoveryPage = () => {
           <div className="absolute right-0 top-0 h-40 w-40 bg-emerald-400/20 blur-3xl" />
           <div className="absolute left-0 bottom-0 h-32 w-32 bg-rose-400/20 blur-3xl" />
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-emerald-200">Disaster Recovery</p>
-          <h1 className="text-4xl md:text-5xl font-black mt-3">Respond fast. Recover together.</h1>
+          <h1 className="text-4xl md:text-5xl font-black mt-3" onClick={handleTitleTap}>Respond fast. Recover together.</h1>
           <p className="mt-4 max-w-2xl text-emerald-100 text-sm md:text-base">
             Track live alerts, coordinate shelters, and share recovery resources for your community.
           </p>
@@ -377,6 +420,7 @@ export const DisasterRecoveryPage = () => {
               updates.map((update) => {
                 const categoryMeta = CATEGORY_OPTIONS.find((option) => option.value === update.category) || CATEGORY_OPTIONS[0];
                 const timestamp = update.timestamp || update.createdAt || update.created_at;
+                const isAuthor = update.user_id === user?.id;
                 return (
                   <article key={update.update_id} className="rounded-2xl border border-surface-container-low p-6">
                     <div className="flex items-start justify-between gap-4">
@@ -391,7 +435,18 @@ export const DisasterRecoveryPage = () => {
                           </div>
                         )}
                       </div>
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${categoryMeta.tone}`}>{categoryMeta.label}</span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${categoryMeta.tone}`}>{categoryMeta.label}</span>
+                        {isAuthor && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUpdate(update.update_id)}
+                            className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
                       <span>Shared by {update.user_name}</span>

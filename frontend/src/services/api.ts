@@ -213,3 +213,8 @@ export const createDisasterUpdate = async (payload: {
   const response = await api.post('/disaster/updates', payload);
   return response.data;
 };
+
+export const deleteDisasterUpdate = async (updateId: string) => {
+  const response = await api.delete(`/disaster/updates/${updateId}`);
+  return response.data;
+};

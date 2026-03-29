@@ -63,9 +63,10 @@ router.get('/community/active', protect, communityController.getActiveNinjas);
 router.get('/community/counties', protect, communityController.getCounties);
 
 // Disaster Recovery
-router.get('/disaster/alerts', protect, disasterController.getAlerts);
-router.get('/disaster/geocode', protect, disasterController.geocodeLocation);
+router.get('/disaster/alerts', disasterController.getAlerts);
+router.get('/disaster/geocode', disasterController.geocodeLocation);
 router.get('/disaster/updates', protect, disasterController.listUpdates);
 router.post('/disaster/updates', protect, disasterController.createUpdate);
+router.delete('/disaster/updates/:updateId', protect, disasterController.deleteUpdate);
 
 module.exports = router;

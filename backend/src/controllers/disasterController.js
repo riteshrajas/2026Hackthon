@@ -163,9 +163,36 @@ const geocodeLocation = async (req, res) => {
   }
 };
 
+const deleteUpdate = async (req, res) => {
+  try {
+    const userId = req.userAuth?.user_id || req.user?.user_id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authorized, user missing' });
+    }
+
+    const updateId = req.params.updateId;
+    const update = await DisasterUpdate.findOne({ update_id: updateId });
+
+    if (!update) {
+      return res.status(404).json({ error: 'Update not found' });
+    }
+
+    if (update.user_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this update' });
+    }
+
+    await DisasterUpdate.deleteOne({ update_id: updateId });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Delete disaster update error:', error);
+    return res.status(500).json({ error: 'Server error while deleting update' });
+  }
+};
+
 module.exports = {
   listUpdates,
   createUpdate,
   getAlerts,
-  geocodeLocation
+  geocodeLocation,
+  deleteUpdate
 };
