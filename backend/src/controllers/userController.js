@@ -48,4 +48,30 @@ const getUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getUser };
+const updateUser = async (req, res) => {
+  try {
+    const { name, profile_picture } = req.body;
+    // ensure the user requesting the update is the user being updated
+    if (req.userAuth && req.userAuth.user_id !== req.params.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const updateFields = {};
+    if (name) updateFields.name = name;
+    if (profile_picture !== undefined) updateFields.profile_picture = profile_picture;
+
+    const user = await User.findOneAndUpdate(
+      { user_id: req.params.id },
+      { $set: updateFields },
+      { new: true }
+    ).select('-password');
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { createUser, getUser, updateUser };

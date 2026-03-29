@@ -52,13 +52,24 @@ const NeighborhoodPerformanceSchema = new mongoose.Schema({
   active_users: { type: Number, default: 0 }
 }, { timestamps: true });
 
+const PostSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  user_id: { type: String, required: true },
+  text: { type: String, required: true },
+  image_url: { type: String, default: '' },
+  likes: { type: Number, default: 0 },
+  created_at: { type: Date, default: Date.now }
+}, { timestamps: true });
+
 const User = mongoose.model('User', UserSchema);
 const ActionLog = mongoose.model('ActionLog', ActionLogSchema);
 const NeighborhoodPerformance = mongoose.model('NeighborhoodPerformance', NeighborhoodPerformanceSchema);
+const Post = mongoose.model('Post', PostSchema);
 
 module.exports = {
   connectDB,
   User,
   ActionLog,
-  NeighborhoodPerformance
+  NeighborhoodPerformance,
+  Post
 };

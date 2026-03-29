@@ -1,14 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
 import toast, { Toaster } from 'react-hot-toast';
+import { createPost, getPosts } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export const FeedPage = () => {
   const [postText, setPostText] = useState('');
+  const [posts, setPosts] = useState<any[]>([]);
+  const { user } = useAuth();
 
-  const handleShare = () => {
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const data = await getPosts();
+      setPosts(data);
+    } catch (error) {
+      console.error('Failed to fetch posts', error);
+      toast.error('Failed to load feed');
+    }
+  };
+
+  const handleShare = async () => {
     if (!postText.trim()) return;
-    toast.success('Your Eco-Win has been shared!', { id: 'share' });
-    setPostText('');
+    try {
+      const newPost = await createPost(postText);
+      // Construct a post object similar to what getFeed returns
+      const postWithUser = {
+        ...newPost,
+        user: {
+          name: user?.name,
+          profile_picture: user?.profile_picture
+        }
+      };
+      setPosts([postWithUser, ...posts]);
+      toast.success('Your Eco-Win has been shared!', { id: 'share' });
+      setPostText('');
+    } catch (error) {
+      console.error('Failed to create post', error);
+      toast.error('Failed to share post');
+    }
   };
 
   return (
@@ -19,7 +52,7 @@ export const FeedPage = () => {
         <section className="xl:col-span-8 flex flex-col gap-8">
           {/* Share Input Box */}
           <div className="bg-surface-container-lowest rounded-lg p-6 flex items-center gap-4 transition-all duration-300">
-            <img alt="Primary user profile" className="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDs-aozSEloHJ_7CuDbTuEzQYHwHYTCB4ICu1BTHuj_3iafyk34Y_Nf5qEIqfl5Jw10UK-egK6jIxIpxqnfjI7Fws6aPrNOaNtL_30a3r-MxlvLFYRUvBcXBRET4o02O2OvgXvb-ALT83eyrtPsmZudZYTlnzeP7t5u2-Ao-NSkslzcuu4vtBb96lMekyzMAfICml8ZIg-i0HnCwfPMKn3O5QtBz-id5ziU5RDdros2ieJe2C5TCDMpeN2tEJ-QZgNo4PyaOy5-oEcm"/>
+            <img alt="User profile" className="w-12 h-12 rounded-full object-cover" src={user?.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=6effc1&color=006948`}/>
             <div className="flex-1 bg-surface-container-low rounded-full px-6 py-3 flex items-center justify-between cursor-text hover:bg-surface-container transition-colors focus-within:ring-2 ring-primary">
               <input 
                 type="text" 
@@ -34,73 +67,45 @@ export const FeedPage = () => {
             </div>
           </div>
 
-          {/* Feed Post 1 */}
-          <article className="bg-surface-container-lowest rounded-lg overflow-hidden group">
-            <div className="p-8 pb-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <img alt="Lily Blossom avatar" className="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATiqhzh5xmUmxxQ_bB6ajAF4kiJscO20THIzYZBLVA6L-CezMu_2If-L5R9H-CgnYJI1KzUh8YRpR_qV0nn_18pAVGR2g-MzXOUU-_UBQ3RCyYIg3HBfNJuTOWugjSwM6OSV7YOPbCu1-RUG5T1gKge3ZcCNB0Ga2-6cp2bNRz0ozvcRzGAKhbN_RGk7G2mT7YQMSy647XtxThJYFoT2aSiMVbh4CzQ1KglbZNzG9xS0JhoDX7TAl3j_ZGcBYICO8UEW2BNEWXGv4c"/>
-                <div>
-                  <h4 className="font-headline font-bold text-on-surface">Lily Blossom</h4>
-                  <span className="text-xs text-on-surface-variant">2 hours ago</span>
+          {/* Dynamic Feed Posts */}
+          {posts.map((post) => (
+            <article key={post.id} className="bg-surface-container-lowest rounded-lg overflow-hidden group">
+              <div className="p-8 pb-4 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <img alt={`${post.user?.name} avatar`} className="w-12 h-12 rounded-full object-cover" src={post.user?.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.user?.name || 'User')}&background=6effc1&color=006948`}/>
+                  <div>
+                    <h4 className="font-headline font-bold text-on-surface">{post.user?.name}</h4>
+                    <span className="text-xs text-on-surface-variant">
+                      {new Date(post.created_at).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
+                <span className="bg-secondary-container text-on-secondary-fixed text-[0.75rem] font-bold uppercase tracking-wider px-3 py-1 rounded-sm">ECO-WIN</span>
               </div>
-              <span className="bg-secondary-container text-on-secondary-fixed text-[0.75rem] font-bold uppercase tracking-wider px-3 py-1 rounded-sm">ECO-WIN</span>
-            </div>
-            <div className="px-8 pb-6">
-              <p className="text-on-surface text-lg leading-relaxed">Just harvested my first batch of organic cherry tomatoes! No pesticides, just pure sunshine and compost. 🍅🌿 #OrganicGarden #SustainableLiving</p>
-            </div>
-            <div className="px-8 mb-6">
-              <img alt="Garden tomatoes" className="w-full h-96 object-cover rounded-md" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA02IF_O1iNHr8z1O1Tjw9QUKdlKrFo4LQ06Y8T-oqRoVW8QXlJAO2bxhpGPXVGPnwuztMfvjbLou2KUVZxJjtOyJTp0AF3M1YAH-IIza6y4weTgLKQGrT4fX50F1D13Ar1fFCRIiC2T3wHlq6IjSI-37FnlzLYupjQf92wIOoiGi3n0W7DM1Z_2uV55_nm2G4JaApv_OYgCe6dwetn2h2J3A6MDRqjJyK8oW4rDbuAqEZcmcPM4uDaSFXGVT575KliVAizgoSQJ6R7"/>
-            </div>
-            <div className="px-8 py-6 flex items-center justify-between border-t border-surface-container-low/30">
-              <div className="flex items-center gap-6">
-                <button onClick={() => toast.success('You loved this post!')} className="bg-primary-container text-on-primary-container px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 cursor-pointer">
-                  <span className="material-symbols-outlined" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span> Love this!
-                </button>
-                <button onClick={() => toast('Comments feature coming soon!', { icon: '💬' })} className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
-                  <span className="material-symbols-outlined">chat_bubble</span>
-                  <span className="font-bold">12 Comments</span>
-                </button>
+              <div className="px-8 pb-6">
+                <p className="text-on-surface text-lg leading-relaxed">{post.text}</p>
               </div>
-              <button onClick={() => toast.success('Link copied to clipboard!')} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
-                <span className="material-symbols-outlined">share</span>
-              </button>
-            </div>
-          </article>
-
-          {/* Feed Post 2 */}
-          <article className="bg-surface-container-lowest rounded-lg overflow-hidden group">
-            <div className="p-8 pb-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <img alt="Kai Rivers avatar" className="w-12 h-12 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8Fslog_vURO73oy28lbMGarft5323PUEr2FCZhjVSIqKf3SQ-bIkNzNllBC5YykKn3wgTrQKkxu42omAwMAP8byjG_Kroh_nf-kZ3K6Ha1erkGjk0azzNWfDgqIk5JVXTrLoOxhbsAM4HOagnEj057vNr9cUH9JIxLJv-WlKXEdxmTmcDy0XRskaJx61NHdt_DvSoMdktwBzqhmmSCrI1NcyQqpk3u5-kEmAv8lSuJix9YkqTZ0ERDN-LE45d8bXDZHrBN8EbFRs9"/>
-                <div>
-                  <h4 className="font-headline font-bold text-on-surface">Kai Rivers</h4>
-                  <span className="text-xs text-on-surface-variant">5 hours ago</span>
+              {post.image_url && (
+                <div className="px-8 mb-6">
+                  <img alt="Post attachment" className="w-full h-96 object-cover rounded-md" src={post.image_url}/>
                 </div>
-              </div>
-              <span className="bg-secondary-container text-on-secondary-fixed text-[0.75rem] font-bold uppercase tracking-wider px-3 py-1 rounded-sm">ECO-WIN</span>
-            </div>
-            <div className="px-8 pb-6">
-              <p className="text-on-surface text-lg leading-relaxed">Spent the morning with the local crew cleaning up the West River bank. We collected over 15 bags of plastic! Our waterways deserve better. 🌊💪 #RiverCleanup #EcoWarrior</p>
-            </div>
-            <div className="px-8 mb-6">
-              <img alt="River cleanup" className="w-full h-96 object-cover rounded-md" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYcPkwygHlzZ-vjq0BDPEFoixF8g5ptrFdg0wJG7kVS1uYTA_hE_InMRQRQFdVoFYzlN5O50Q70pmHDUZPqbTbldcImJ4oGFkeP9PiOv2tY1EMYSauwwNVK8XxfK6rnzvhjkZecPI2IVY9MhloaMi8Wx1X07Y9QMVMtoGUcnbKkGyeGzyiTuy75_7Reqjzccj8vtEWjBQnqfnimmUTUBbqpAnHQb_i-CpB_5F_uK7jmW1Ef7BOzXjxiOdmHcGyL-TP3Lepq_zLahv6"/>
-            </div>
-            <div className="px-8 py-6 flex items-center justify-between border-t border-surface-container-low/30">
-              <div className="flex items-center gap-6">
-                <button onClick={() => toast.success('You loved this post!')} className="bg-primary-container text-on-primary-container px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 cursor-pointer">
-                  <span className="material-symbols-outlined" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span> Love this!
-                </button>
-                <button onClick={() => toast('Comments feature coming soon!', { icon: '💬' })} className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
-                  <span className="material-symbols-outlined">chat_bubble</span>
-                  <span className="font-bold">24 Comments</span>
+              )}
+              <div className="px-8 py-6 flex items-center justify-between border-t border-surface-container-low/30">
+                <div className="flex items-center gap-6">
+                  <button onClick={() => toast.success('You loved this post!')} className="bg-primary-container text-on-primary-container px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 cursor-pointer">
+                    <span className="material-symbols-outlined" data-weight="fill" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span> Love this!
+                  </button>
+                  <button onClick={() => toast('Comments feature coming soon!', { icon: '💬' })} className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+                    <span className="material-symbols-outlined">chat_bubble</span>
+                    <span className="font-bold">0 Comments</span>
+                  </button>
+                </div>
+                <button onClick={() => toast.success('Link copied to clipboard!')} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
+                  <span className="material-symbols-outlined">share</span>
                 </button>
               </div>
-              <button onClick={() => toast.success('Link copied to clipboard!')} className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer">
-                <span className="material-symbols-outlined">share</span>
-              </button>
-            </div>
-          </article>
+            </article>
+          ))}
         </section>
 
         {/* Sidebar Column */}
