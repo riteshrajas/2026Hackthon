@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
+  updateUserProfile: (user: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,8 +49,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('eco_user');
   };
 
+  const updateUserProfile = (updatedUser: Partial<User>) => {
+    if (user) {
+      const newUser = { ...user, ...updatedUser };
+      setUser(newUser);
+      localStorage.setItem('eco_user', JSON.stringify(newUser));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoading, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

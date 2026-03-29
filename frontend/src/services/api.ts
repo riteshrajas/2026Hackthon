@@ -45,3 +45,18 @@ export const getAISuggestions = async (userId: string) => {
   const response = await api.post(`/ai/suggest`, { user_id: userId });
   return response.data;
 };
+
+export const createPost = async (text: string, imageUrl?: string) => {
+  const response = await api.post('/posts', { text, image_url: imageUrl });
+  return response.data;
+};
+
+export const getPosts = async () => {
+  const response = await api.get('/posts');
+  return response.data;
+};
+
+export const updateUser = async (userId: string, data: { name?: string; profile_picture?: string }) => {
+  const response = await api.put(`/user/${userId}`, data);
+  return response.data;
+};
