@@ -21,11 +21,12 @@ Modular, scalable, and demo-ready backend for the Eco-Pulse hackathon project.
 ## 🛠️ API Endpoints
 
 ### 👤 Users
-- `POST /api/user/create` - Create a new user
+- `POST /api/auth/register` - Create a new user
   ```json
-  { "name": "Your Name", "neighborhood_tag": "EcoVillage" }
+  { "name": "Your Name", "email": "user@example.com", "password": "securepassword", "neighborhood_tag": "EcoVillage" }
   ```
-- `GET /api/user/:id` - Get user stats
+- `POST /api/auth/login` - Authenticate a user
+- `GET /api/user/:id` - Get user stats (Requires Auth)
 
 ### 📊 Actions & Points
 - `POST /api/action/log` - Award Eco-Credits

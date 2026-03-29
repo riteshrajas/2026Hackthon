@@ -14,7 +14,6 @@ router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 
 // User Routes
-router.post('/user/create', userController.createUser); // Potentially deprecated by auth/register
 router.get('/user/:id', protect, userController.getUser);
 
 // Action Log Route
