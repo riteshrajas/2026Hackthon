@@ -1,6 +1,7 @@
 
 const { User } = require('../models/db');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
 
 const createUser = async (req, res) => {
   const { name, email, password, neighborhood_tag, squad_id, country } = req.body;
@@ -51,15 +52,21 @@ const getUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { name, profile_picture } = req.body;
+    const { name } = req.body;
+    let profilePicture = req.body.profile_picture;
     // ensure the user requesting the update is the user being updated
     if (req.userAuth && req.userAuth.user_id !== req.params.id) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    if (req.file) {
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      profilePicture = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
+    }
+
     const updateFields = {};
     if (name) updateFields.name = name;
-    if (profile_picture !== undefined) updateFields.profile_picture = profile_picture;
+    if (profilePicture !== undefined) updateFields.profile_picture = profilePicture;
 
     const user = await User.findOneAndUpdate(
       { user_id: req.params.id },
@@ -75,4 +82,50 @@ const updateUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser, getUser, updateUser };
+const updatePassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) {
+      return res.status(400).json({ error: 'Current and new passwords are required' });
+    }
+
+    if (req.userAuth && req.userAuth.user_id !== req.params.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const user = await User.findOne({ user_id: req.params.id });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isMatch = await bcrypt.compare(current_password, user.password);
+    if (!isMatch) return res.status(400).json({ error: 'Current password is incorrect' });
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(new_password, salt);
+    await user.save();
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    if (req.userAuth && req.userAuth.user_id !== req.params.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const result = await User.deleteOne({ user_id: req.params.id });
+    if (!result.deletedCount) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { createUser, getUser, updateUser, updatePassword, deleteUser };

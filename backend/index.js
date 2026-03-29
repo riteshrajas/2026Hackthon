@@ -1,11 +1,37 @@
 
-require('dotenv').config();
+const isFirebaseRuntime = Boolean(
+  process.env.FUNCTION_NAME ||
+  process.env.K_SERVICE ||
+  process.env.FUNCTIONS_EMULATOR
+);
+
+if (!isFirebaseRuntime) {
+  require('dotenv').config();
+}
+
 const express = require('express');
 const cors = require('cors');
+const functions = require('firebase-functions');
 const app = express();
 const { connectDB, User } = require('./src/models/db');
 const { awardEcoCredits, resetWeeklyPoints } = require('./src/services/ecoService');
 const apiRoutes = require('./src/routes/api');
+
+const functionsConfig = (() => {
+  try {
+    return functions.config();
+  } catch (error) {
+    return {};
+  }
+})();
+
+if (!process.env.MONGODB_URI && functionsConfig.env && functionsConfig.env.mongodb_uri) {
+  process.env.MONGODB_URI = functionsConfig.env.mongodb_uri;
+}
+
+if (!process.env.JWT_SECRET && functionsConfig.env && functionsConfig.env.jwt_secret) {
+  process.env.JWT_SECRET = functionsConfig.env.jwt_secret;
+}
 
 app.use(cors());
 app.use(express.json({ limit: '6mb' }));
@@ -13,18 +39,8 @@ app.use(express.urlencoded({ limit: '6mb', extended: true }));
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Connect to DB
-connectDB().then(() => {
-  // Start server after DB connection
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`ECO-PULSE Backend running on port ${PORT}`);
-    seedDemoData(); // Call seedDemoData here after DB is connected
-  });
-});
-
 // Routes
-app.use('/api', apiRoutes);
+app.use(isFirebaseRuntime ? '/' : '/api', apiRoutes);
 
 // Mock Health/Root
 app.get('/', (req, res) => res.json({ status: 'ECO-PULSE Backend Active' }));
@@ -89,9 +105,35 @@ app.post('/admin/weekly-reset', async (req, res) => {
   }
 });
 
+const dbReady = connectDB();
+
+const handleRequest = async (req, res) => {
+  try {
+    await dbReady;
+    return app(req, res);
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    res.status(500).json({ error: 'Database initialization failed' });
+  }
+};
+
 const PORT = process.env.PORT || 3000;
-// We start listening in the connectDB().then() block now
-// app.listen(PORT, () => {
-//   console.log(`ECO-PULSE Backend running on port ${PORT}`);
-//   seedDemoData();
-// });
+
+if (require.main === module) {
+  dbReady
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`ECO-PULSE Backend running on port ${PORT}`);
+        seedDemoData();
+      });
+    })
+    .catch((error) => {
+      console.error('Failed to start server:', error);
+    });
+}
+
+module.exports = {
+  api: functions.https.onRequest(handleRequest),
+  app,
+  dbReady
+};

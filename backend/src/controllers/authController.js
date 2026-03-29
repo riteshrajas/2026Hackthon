@@ -12,8 +12,8 @@ const register = async (req, res) => {
     let profile_picture = req.body.profile_picture || '';
     
     if (req.file) {
-      const baseUrl = req.protocol + '://' + req.get('host');
-      profile_picture = `${baseUrl}/uploads/${req.file.filename}`;
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      profile_picture = `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
     }
 
     if (!name || !email || !password || !neighborhood_tag) {

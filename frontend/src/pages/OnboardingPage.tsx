@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import ReactCrop, { type Crop } from 'react-image-crop';
+import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
 export const OnboardingPage = () => {
@@ -17,7 +17,7 @@ export const OnboardingPage = () => {
   // Image Upload and Crop State
   const [imgSrc, setImgSrc] = useState('');
   const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<Crop | null>(null);        
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop | null>(null);
   const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const [croppedImageUrl, setCroppedImageUrl] = useState<string>(''); // For previewing the cropped result
   const imgRef = useRef<HTMLImageElement>(null);
@@ -43,13 +43,13 @@ export const OnboardingPage = () => {
 
   const getCroppedImg = async () => {
     const image = imgRef.current;
-    if (!image || !completedCrop) return;
+    if (!image || !completedCrop || completedCrop.width <= 0 || completedCrop.height <= 0) return;
 
     const canvas = document.createElement('canvas');
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
-    canvas.width = completedCrop.width;
-    canvas.height = completedCrop.height;
+    canvas.width = Math.floor(completedCrop.width);
+    canvas.height = Math.floor(completedCrop.height);
     const ctx = canvas.getContext('2d');
 
     if (!ctx) return;
@@ -240,8 +240,8 @@ export const OnboardingPage = () => {
                   <div className="flex flex-col items-center space-y-4 bg-surface-container-lowest p-2 rounded border border-outline-variant">
                     <ReactCrop
                       crop={crop}
-                      onChange={(_, percentCrop) => setCrop(percentCrop)}       
-                      onComplete={(c) => setCompletedCrop(c)}
+                      onChange={(c) => setCrop(c)}
+                      onComplete={(c) => setCompletedCrop(c as PixelCrop)}
                       aspect={1}
                       circularCrop
                     >
@@ -249,6 +249,19 @@ export const OnboardingPage = () => {
                         ref={imgRef}
                         alt="Crop me"
                         src={imgSrc}
+                        onLoad={(e) => {
+                          const { width, height } = e.currentTarget;
+                          const size = Math.min(width, height);
+                          const nextCrop: Crop = {
+                            unit: 'px',
+                            width: size,
+                            height: size,
+                            x: Math.floor((width - size) / 2),
+                            y: Math.floor((height - size) / 2)
+                          };
+                          setCrop(nextCrop);
+                          setCompletedCrop(nextCrop as PixelCrop);
+                        }}
                         className="max-h-64 object-contain"
                       />
                     </ReactCrop>

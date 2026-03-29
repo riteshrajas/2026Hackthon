@@ -12,19 +12,9 @@ const eventController = require('../controllers/eventController');
 const communityController = require('../controllers/communityController');
 const { protect } = require('../utils/authMiddleware');
 const multer = require('multer');
-const path = require('path');
 
 // Multer config
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Auth Routes
 router.post('/auth/register', upload.single('profile_picture'), authController.register);
@@ -41,6 +31,9 @@ router.post('/posts/:postId/comments/:commentId/like', protect, commentControlle
 // User Routes
 router.post('/user/create', userController.createUser);
 router.get('/user/:id', protect, userController.getUser);
+router.put('/user/:id', protect, upload.single('profile_picture'), userController.updateUser);
+router.put('/user/:id/password', protect, userController.updatePassword);
+router.delete('/user/:id', protect, userController.deleteUser);
 
 // Action Log Route
 router.post('/action/log', protect, actionController.logAction);

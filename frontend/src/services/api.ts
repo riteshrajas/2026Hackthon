@@ -100,8 +100,31 @@ export const toggleCommentLike = async (postId: string, commentId: string) => {
   return response.data;
 };
 
-export const updateUser = async (userId: string, data: { name?: string; profile_picture?: string }) => {
+export const updateUserProfile = async (
+  userId: string,
+  data: { name?: string; profile_picture?: string } | FormData
+) => {
+  if (data instanceof FormData) {
+    const response = await api.put(`/user/${userId}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+
   const response = await api.put(`/user/${userId}`, data);
+  return response.data;
+};
+
+export const changePassword = async (userId: string, currentPassword: string, newPassword: string) => {
+  const response = await api.put(`/user/${userId}/password`, {
+    current_password: currentPassword,
+    new_password: newPassword
+  });
+  return response.data;
+};
+
+export const deleteAccount = async (userId: string) => {
+  const response = await api.delete(`/user/${userId}`);
   return response.data;
 };
 
