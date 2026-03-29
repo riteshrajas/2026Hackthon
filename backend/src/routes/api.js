@@ -59,5 +59,6 @@ router.get('/community/requests', protect, communityController.getPendingRequest
 router.post('/community/requests', protect, communityController.createRequest);
 router.post('/community/requests/:requestId/respond', protect, communityController.respondToRequest);
 router.get('/community/active', protect, communityController.getActiveNinjas);
+router.get('/community/counties', protect, communityController.getCounties);
 
 module.exports = router;

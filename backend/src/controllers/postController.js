@@ -34,8 +34,24 @@ const createPost = async (req, res) => {
 
 const getPosts = async (req, res) => {
   try {
-    const posts = await Post.find().sort({ timestamp: -1 });
-    res.json(posts);
+    const county = typeof req.query.county === 'string' ? req.query.county.trim() : '';
+
+    if (county) {
+      const users = await User.find({ neighborhood_tag: county }).select('user_id').lean();
+      const userIds = users.map((user) => user.user_id);
+
+      if (userIds.length === 0) {
+        return res.json([]);
+      }
+
+      const posts = await Post.find({ user_id: { $in: userIds } })
+        .sort({ timestamp: -1 })
+        .lean();
+      return res.json(posts);
+    }
+
+    const posts = await Post.find().sort({ timestamp: -1 }).lean();
+    return res.json(posts);
   } catch (error) {
     console.error('Get posts error:', error);
     res.status(500).json({ error: 'Server error while fetching posts' });

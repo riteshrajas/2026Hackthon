@@ -128,9 +128,25 @@ const getActiveNinjas = async (req, res) => {
   }
 };
 
+const getCounties = async (req, res) => {
+  try {
+    const counties = await User.distinct('neighborhood_tag');
+    const cleaned = Array.from(new Set(
+      counties
+        .map((value) => (value || '').trim())
+        .filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+
+    res.json(cleaned);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getPendingRequests,
   createRequest,
   respondToRequest,
-  getActiveNinjas
+  getActiveNinjas,
+  getCounties
 };

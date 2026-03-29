@@ -75,8 +75,10 @@ export const createPost = async (content: string, imageUrl?: string) => {
   return response.data;
 };
 
-export const getPosts = async () => {
-  const response = await api.get('/posts');
+export const getPosts = async (county?: string) => {
+  const response = await api.get('/posts', {
+    params: county ? { county } : undefined
+  });
   return response.data;
 };
 
@@ -140,6 +142,11 @@ export const respondToRequest = async (requestId: string, status: 'accepted' | '
 
 export const getActiveNinjas = async (scope: 'county' | 'country' | 'global', value?: string, limit = 5) => {
   const response = await api.get('/community/active', { params: { scope, value, limit } });
+  return response.data;
+};
+
+export const getCounties = async () => {
+  const response = await api.get('/community/counties');
   return response.data;
 };
 
